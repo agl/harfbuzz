@@ -10,7 +10,7 @@ figuring out what is going on. Please extend to cover additional parts of the
 tables as you encounter fonts using them.  The dumper is written by Owen Taylor.
 
 Bug reports on these files should be sent to the HarfBuzz mailing list as
-listed on http://freedesktop.org/wiki/Software/harfbuzz
+listed on http://freedesktop.org/wiki/Software/HarfBuzz
 
 For license information, see the file COPYING. 
 
