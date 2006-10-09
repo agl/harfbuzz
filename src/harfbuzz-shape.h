@@ -43,23 +43,23 @@ const char *hb_language_to_string(HB_Language language);
  */
 enum HB_RunEdge {
     HB_RUN_EDGE_LINE_VISUAL_EDGE    = 1 << 0,
-    HB_RUN_EDGE_LINE_VISUAL_MIDDLE  = 1 << 1,
-    HB_RUN_EDGE_LINE_LOGICAL_EDGE   = 1 << 2,
-    HB_RUN_EDGE_LINE_LOGICAL_MIDDLE = 1 << 3,
-    HB_RUN_EDGE_LINE_ADD_HYPHEN     = 1 << 4  /* ???? */
+    HB_RUN_EDGE_LINE_LOGICAL_EDGE   = 1 << 1,
+    HB_RUN_EDGE_LINE_ADD_HYPHEN     = 1 << 2  /* ???? */
 };
 
-/* Defines optional informaiton in HB_ShapeInput => binary compat */
+/* Defines optional informaiton in HB_ShapeInput; this allows extension
+ * of HB_ShapeInput while keeping binary compatibility
+ */
 enum HB_ShapeFlags {
     HB_SHAPE_START_TYPE = 1 << 0,
     HB_SHAPE_END_TYPE   = 1 << 1
 };
 
 /* Attributes types are described by "interned strings"; this is a little
- * annoying if you want to right a switch statement, but keeps things
+ * annoying if you want to write a switch statement, but keeps things
  * simple.
  */
-typedef struct HB_AttributeType_ HB_AttributeType;
+typedef struct HB_AttributeType_ *HB_AttributeType;
 
 HB_AttributeType hb_attribute_type_from_string(const char *str);
 const char *hb_attribute_type_to_string(HB_AttributeType attribute_type);
@@ -68,6 +68,16 @@ struct HB_Attribute {
     HB_AttributeType type;
     int start; 
     int end;
+};
+
+
+/**
+ * You could handle this like HB_Language, but an enum seems a little nicer;
+ * another approach would be to use OpenType script tags.
+ */
+enum HB_Script {
+    HB_SCRIPT_LATIN
+    /* ... */
 };
 
 /* This is just the subset of direction information needed by the shaper */
@@ -88,7 +98,6 @@ struct HB_ShapeInput {
     int shape_offset; /* start of section to shape */
     int shape_length; /* number of code points to shape */
 
-    HB_Gravity gravity;
     HB_Direction direction;
     HB_Script script;
     HB_Language language;
@@ -110,25 +119,47 @@ struct HB_GlyphItem {
     /* Add kashida information, etc, here */
 };
 
-struct HB_GlyphOutput {
-    int glyph_item_size;
-    int buffer_space;
-    int total_glyphs;
-    int *log_clusters; /* Uniscribe style */
-  
-    void *buffer;
+enum HB_Result {
+    HB_RESULT_SUCCESS,
+    HB_RESULT_NO_MEMORY,
+    HB_SHAPE_RESULT_FAILED
 };
 
-/* Accessor for a particular glyph, really only for internal use */
-#define HB_GLYPH_OUTPUT_ITEM(HB_GlyphOutput output, int index) ..
+/*
+ * Buffer for output 
+ */
+struct HB_GlyphBuffer {
+    int glyph_item_size;
+    int total_glyphs;
+    
+    int *log_clusters; /* Uniscribe style */
+    int cluster_space;
+  
+    int glyph_space;
+    void *glyph_buffer;
+};
+
+/* Making this self-allocating simplifies writing shapers and
+ * also keeps things easier for caller. item_size passed in
+ * must be at least sizeof(HB_GlyphItem) but can be bigger,
+ * to accomodate application structures that extend HB_GlyphItem.
+ * The allocated items will be zero-initialized.
+ *
+ * (Hack: Harfbuzz could choose to use even a *bigger* item size
+ * and stick internal information before the public item structure.
+ * This hack could possibly be used to unify this with HB_Buffer)
+ */
+HB_GlyphBuffer *hb_glyph_buffer_new             (size_t item_size);
+void            hb_glyph_buffer_clear           ();
+HB_Result       hb_glyph_buffer_extend_glyphs   (int    n_items);
+HB_Result       hb_glyph_buffer_extend_clusters (int    n_clusters);
+void            hb_glyph_buffer_free            (void);
+
+
+/* Accessor for a particular glyph */
+#define HB_GLYPH_BUFFER_ITEM(HB_GlyphBuffer buffer, int index) ..
 
 /*
  * Main shaping function
  */
-enum HB_ShapeResult {
-    HB_SHAPE_RESULT_SUCCESS,
-    HB_SHAPE_RESULT_NOT_ENOUGH_SPACE, /* HB_GlyphOutput.total_glyphs is updated */
-    HB_SHAPE_RESULT_FAILED,
-};
-
-HB_ShapeResult hb_shape(HB_ShapeInput *input, HBGlyphOutput *output);
+HB_ShapeResult hb_shape(HB_ShapeInput *input, HB_GlyphBuffer *output);
