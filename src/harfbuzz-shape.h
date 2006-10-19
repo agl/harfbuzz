@@ -150,10 +150,10 @@ struct HB_GlyphBuffer {
  * This hack could possibly be used to unify this with HB_Buffer)
  */
 HB_GlyphBuffer *hb_glyph_buffer_new             (size_t item_size);
-void            hb_glyph_buffer_clear           ();
-HB_Result       hb_glyph_buffer_extend_glyphs   (int    n_items);
-HB_Result       hb_glyph_buffer_extend_clusters (int    n_clusters);
-void            hb_glyph_buffer_free            (void);
+void            hb_glyph_buffer_clear           (HB_GlyphBuffer *buf);
+HB_Result       hb_glyph_buffer_extend_glyphs   (HB_GlyphBuffer *buf, int n_items);
+HB_Result       hb_glyph_buffer_extend_clusters (HB_GlyphBuffer *buf, int n_clusters);
+void            hb_glyph_buffer_free            (HB_GlyphBuffer *buf);
 
 
 /* Accessor for a particular glyph */
