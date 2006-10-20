@@ -8,7 +8,7 @@ test -z "$srcdir" && srcdir=.
 
 ORIGDIR=`pwd`
 cd $srcdir
-PROJECT=Fontconfig
+PROJECT=harfbuzz
 TEST_TYPE=-f
 FILE=src/harfbuzz.h
 ACLOCAL=${ACLOCAL-aclocal}
