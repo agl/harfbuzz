@@ -41,13 +41,13 @@ libharfbuzz_1_la_SOURCES = \
 libharfbuzz_1_la_LIBADD = \
 	$(FREETYPE_LIBS)
 
-noinst_PROGRAMS = harfbuzz-dump
-
-harfbuzz_dump_SOURCES = 	\
-	harfbuzz-dump-main.c
-
-harfbuzz_dump_LDADD = 		\
-	libharfbuzz-1.la
+#noinst_PROGRAMS = harfbuzz-dump
+#
+#harfbuzz_dump_SOURCES = 	\
+#	harfbuzz-dump-main.c
+#
+#harfbuzz_dump_LDADD = 		\
+#	libharfbuzz-1.la
 
 EXTRA_DIST = 		\
 	README		\
