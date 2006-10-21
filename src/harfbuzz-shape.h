@@ -1,13 +1,16 @@
+#include <stdint.h>
+
 /* Base Types */
 
 typedef uint16_t HB_CodePoint; /* UTF-16 codepoint (not character ) */
-typedef char HB_Boolean
+typedef char HB_Boolean;
 typedef uint32_t HB_Fixed; /* 26.6 */
 typedef uint32_t HB_Glyph;
 typedef uint32_t HB_Unichar;
 
 /* Metrics reported by the font backend for use of the shaper */
-struct HB_GlyphMetrics
+typedef struct _HB_GlyphMetrics HB_GlyphMetrics;
+struct _HB_GlyphMetrics
 {
     HB_Fixed advance;
     
@@ -18,14 +21,17 @@ struct HB_GlyphMetrics
  * HB_Font: Abstract font interface.
  *  First pass of this might just have FT_Face *getFace();
  */
+typedef struct _HB_Font HB_Font;
+typedef struct _HB_FontClass HB_FontClass;
+
 struct HB_FontClass {
-    HB_Glyph   charToGlyph(HBFont *font, HB_Unichar char);
-    void       getMetrics(HBFont *font, HB_Glyph glyph, HB_GlyphMetrics *metrics);
-    HB_Boolean getSFontTable(HBFont *font, void **cookie, char **start, int *len);
-    HB_Boolean freeSFontTable(void **cookie);
+    HB_Glyph   (*charToGlyph)(HB_Font *font, HB_Unichar chr);
+    void       (*getMetrics)(HB_Font *font, HB_Glyph glyph, HB_GlyphMetrics *metrics);
+    HB_Boolean (*getSFontTable)(HB_Font *font, void **cookie, char **start, int *len);
+    HB_Boolean (*freeSFontTable)(void **cookie);
 };
 
-struct HB_Font {
+struct _HB_Font {
     HB_FontClass *clazz;
 };
 
@@ -41,25 +47,25 @@ const char *hb_language_to_string(HB_Language language);
 
 /* Special treatment for the edges of runs.
  */
-enum HB_RunEdge {
+typedef enum {
     HB_RUN_EDGE_LINE_VISUAL_EDGE    = 1 << 0,
     HB_RUN_EDGE_LINE_LOGICAL_EDGE   = 1 << 1,
     HB_RUN_EDGE_LINE_ADD_HYPHEN     = 1 << 2  /* ???? */
-};
+} HB_RunEdge;
 
 /* Defines optional informaiton in HB_ShapeInput; this allows extension
  * of HB_ShapeInput while keeping binary compatibility
  */
-enum HB_ShapeFlags {
+typedef enum {
     HB_SHAPE_START_TYPE = 1 << 0,
     HB_SHAPE_END_TYPE   = 1 << 1
-};
+} HB_ShapeFlags;
 
 /* Attributes types are described by "interned strings"; this is a little
  * annoying if you want to write a switch statement, but keeps things
  * simple.
  */
-typedef struct HB_AttributeType_ *HB_AttributeType;
+typedef struct _HB_AttributeType *HB_AttributeType;
 
 HB_AttributeType hb_attribute_type_from_string(const char *str);
 const char *hb_attribute_type_to_string(HB_AttributeType attribute_type);
@@ -75,19 +81,20 @@ struct HB_Attribute {
  * You could handle this like HB_Language, but an enum seems a little nicer;
  * another approach would be to use OpenType script tags.
  */
-enum HB_Script {
+typedef enum {
     HB_SCRIPT_LATIN
     /* ... */
-};
+} HB_Script;
 
 /* This is just the subset of direction information needed by the shaper */
-enum HB_Direction {
+typedef enum {
     HB_DIRECTION_LTR,
     HB_DIRECTION_RTL,
     HB_DIRECTION_TTB
-};
+} HB_Direction;
 
-struct HB_ShapeInput {
+typedef struct _HB_ShapeInput HB_ShapeInput;
+struct _HB_ShapeInput {
     /* Defines what fields the caller has initialized - fields not in
      * the enum are mandatory.
      */
@@ -102,7 +109,7 @@ struct HB_ShapeInput {
     HB_Script script;
     HB_Language language;
 
-    HB_Attribute *attributes;
+    HB_AttributeType *attributes;
     int n_attributes;
 
     HB_RunEdge start_type;
@@ -119,16 +126,17 @@ struct HB_GlyphItem {
     /* Add kashida information, etc, here */
 };
 
-enum HB_Result {
+typedef enum {
     HB_RESULT_SUCCESS,
     HB_RESULT_NO_MEMORY,
     HB_SHAPE_RESULT_FAILED
-};
+} HB_Result;
 
 /*
  * Buffer for output 
  */
-struct HB_GlyphBuffer {
+typedef struct _HB_GlyphBufer HB_GlyphBuffer;
+struct _HB_GlyphBuffer {
     int glyph_item_size;
     int total_glyphs;
     
@@ -157,9 +165,9 @@ void            hb_glyph_buffer_free            (HB_GlyphBuffer *buf);
 
 
 /* Accessor for a particular glyph */
-#define HB_GLYPH_BUFFER_ITEM(HB_GlyphBuffer buffer, int index) ..
+#define HB_GLYPH_BUFFER_ITEM(buffer, index)
 
 /*
  * Main shaping function
  */
-HB_ShapeResult hb_shape(HB_ShapeInput *input, HB_GlyphBuffer *output);
+HB_Result hb_shape(HB_ShapeInput *input, HB_GlyphBuffer *output);
