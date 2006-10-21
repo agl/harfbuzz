@@ -84,7 +84,7 @@ struct HB_Attribute {
 typedef enum {
     HB_SCRIPT_LATIN
     /* ... */
-} HB_Script;
+} HB_ShapeScript;
 
 /* This is just the subset of direction information needed by the shaper */
 typedef enum {
@@ -106,7 +106,7 @@ struct _HB_ShapeInput {
     int shape_length; /* number of code points to shape */
 
     HB_Direction direction;
-    HB_Script script;
+    HB_ShapeScript script;
     HB_Language language;
 
     HB_AttributeType *attributes;
