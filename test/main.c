@@ -1,3 +1,13 @@
+/*******************************************************************
+ *
+ *  Copyright 2006  Trolltech ASA
+ *
+ *  This is part of HarfBuzz, an OpenType Layout engine library.
+ *
+ *  See the file name COPYING for licensing information.
+ *
+ ******************************************************************/
+
 #include <fontconfig/fontconfig.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
