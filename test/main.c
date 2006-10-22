@@ -8,7 +8,7 @@
 static FT_Library freetype;
 
 static FT_Face
-setup()
+loadFace(const char *fontPattern)
 {
     FcPattern *pattern;
     FcPattern *match;
@@ -21,13 +21,13 @@ setup()
     FT_Init_FreeType (&freetype);
     FcInit ();
 
-    pattern = FcNameParse ("DejaVu Sans");
+    pattern = FcNameParse (fontPattern);
     FcConfigSubstitute (0, pattern, FcMatchPattern);
     FcDefaultSubstitute (pattern);
 
     match = FcFontMatch (0, pattern, &result);
     if (!match) {
-        fprintf(stderr, "Cannot find DejaVu Sans\n");
+        fprintf(stderr, "Cannot find font for pattern %s\n", fontPattern);
         exit(1);
     }
 
@@ -60,6 +60,65 @@ setup()
     return face;
 }
 
+typedef struct {
+    HB_GDEF gdef;
+    HB_GSUB gsub;
+} HB_OpenType_Helper;
+
+typedef struct {
+    FT_UInt tag;
+    FT_UInt property;
+} HB_OpenType_ScriptFeature;
+
+FT_Error
+hb_opentype_helper_new(FT_Face face, HB_OpenType_Helper *helper)
+{
+    HB_Load_GDEF_Table (face, &helper->gdef);
+    HB_Load_GSUB_Table (face, &helper->gsub, helper->gdef);
+
+    return FT_Err_Ok;
+}
+
+FT_Error
+hb_opentype_helper_select_script(HB_OpenType_Helper *helper, FT_UInt tag, HB_OpenType_ScriptFeature *features)
+{
+    FT_UShort scriptIndex = 0;
+    FT_UShort featureIndex = 0;
+    FT_Error error;
+    HB_OpenType_ScriptFeature *feature;
+    int i;
+
+    error = HB_GSUB_Select_Script (helper->gsub, tag, &scriptIndex);
+    if (error)
+        return error;
+
+    for (i = 0; features[i].tag; ++i) {
+        if (!HB_GSUB_Select_Feature (helper->gsub, features[i].tag, scriptIndex, 0xffff, &featureIndex)) {
+            HB_GSUB_Add_Feature (helper->gsub, featureIndex, features[i].property);
+        }
+    }
+
+    return FT_Err_Ok;
+}
+
+FT_Error
+hb_opentype_helper_shape(HB_OpenType_Helper *helper, HB_Buffer buffer)
+{
+    FT_Error error = HB_GSUB_Apply_String (helper->gsub, buffer);
+    if (error && error != HB_Err_Not_Covered)
+        return error;
+    return FT_Err_Ok;
+}
+
+FT_Error
+hb_opentype_helper_free(HB_OpenType_Helper *helper)
+{
+    if (helper->gsub)
+        HB_Done_GSUB_Table (helper->gsub);
+    if (helper->gdef)
+        HB_Done_GDEF_Table (helper->gdef);
+}
+
 typedef enum {
     CcmpProperty = 0x1,
     InitProperty = 0x2,
@@ -74,10 +133,7 @@ typedef enum {
     MsetProperty = 0x400
 } ArabicProperty;
 
-static struct {
-    FT_UInt tag;
-    FT_UInt property;
-} arabicGSubFeatures[] = {
+static HB_OpenType_ScriptFeature arabicGSubFeatures[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('i', 's', 'o', 'l'), IsolProperty },
     { FT_MAKE_TAG('f', 'i', 'n', 'a'), FinaProperty },
@@ -87,47 +143,26 @@ static struct {
     { FT_MAKE_TAG('c', 'a', 'l', 't'), CaltProperty },
     { FT_MAKE_TAG('l', 'i', 'g', 'a'), LigaProperty },
     { FT_MAKE_TAG('d', 'l', 'i', 'g'), DligProperty },
-    { FT_MAKE_TAG('c', 's', 'w', 'h'), CswhProperty }
+    { FT_MAKE_TAG('c', 's', 'w', 'h'), CswhProperty },
+    { 0, 0 }
 };
-static int numArabicGSubFeatures = sizeof(arabicGSubFeatures) / sizeof(arabicGSubFeatures[0]);
 
 static void
 shapetest(FT_Face face)
 {
+    HB_OpenType_Helper helper;
     HB_Buffer buffer;
-    HB_GDEF gdef = 0;
-    HB_GSUB gsub = 0;
-    FT_UShort scriptIndex = 0;
-    FT_UShort featureIndex = 0;
-    FT_UInt error = 0;
     int i;
 
-    HB_Load_GDEF_Table (face, &gdef);
-    HB_Load_GSUB_Table (face, &gsub, gdef);
+    hb_opentype_helper_new (face, &helper);
 
-    if (HB_GSUB_Select_Script (gsub, FT_MAKE_TAG ('a', 'r', 'a', 'b'), &scriptIndex)) {
-        fprintf (stderr, "could not select script\n");
-        return;
-    }
-
-    for (i = 0; i < numArabicGSubFeatures; ++i) {
-        if (!HB_GSUB_Select_Feature (gsub, arabicGSubFeatures[i].tag, scriptIndex, 0xffff, &featureIndex)) {
-            HB_GSUB_Add_Feature (gsub, featureIndex, arabicGSubFeatures[i].property);
-            /*
-            printf ("selected %c%c%c%c\n",
-                    (arabicGSubFeatures[i].tag >> 24) & 0xff,
-                    (arabicGSubFeatures[i].tag >> 16) & 0xff,
-                    (arabicGSubFeatures[i].tag >> 8) & 0xff,
-                    arabicGSubFeatures[i].tag & 0xff);
-                    */
-        }
-    }
+    hb_opentype_helper_select_script (&helper, FT_MAKE_TAG ('a', 'r', 'a', 'b'), arabicGSubFeatures);
 
     hb_buffer_new (face->memory, &buffer);
 
     /* lam */
     if (hb_buffer_add_glyph (buffer,
-                             FT_Get_Char_Index(face, 0x0644),
+                             FT_Get_Char_Index (face, 0x0644),
                              /*properties*/ IsolProperty|MediProperty|FinaProperty,
                              /*cluster*/ 0)) {
         fprintf (stderr, "add_glyph failed?!\n");
@@ -136,7 +171,7 @@ shapetest(FT_Face face)
 
     /* alef */
     if (hb_buffer_add_glyph (buffer,
-                             FT_Get_Char_Index(face, 0x0627),
+                             FT_Get_Char_Index (face, 0x0627),
                              /*properties*/ IsolProperty|MediProperty|InitProperty,
                              /*cluster*/ 1)) {
         fprintf (stderr, "add_glyph[2] failed?!\n");
@@ -147,9 +182,8 @@ shapetest(FT_Face face)
     for (i = 0; i < buffer->in_length; ++i)
         printf ("i %d glyph %4x\n", i, buffer->in_string[i].gindex);
 
-    error = HB_GSUB_Apply_String (gsub, buffer);
-    if (error && error != HB_Err_Not_Covered) {
-        fprintf(stderr, "harfbuzz gsub error %x\n", error);
+    if (hb_opentype_helper_shape (&helper, buffer)) {
+        fprintf(stderr, "harfbuzz gsub error\n");
         return;
     }
 
@@ -157,18 +191,15 @@ shapetest(FT_Face face)
     for (i = 0; i < buffer->in_length; ++i)
         printf ("i %d glyph %4x\n", i, buffer->in_string[i].gindex);
 
-    if (gsub)
-        HB_Done_GSUB_Table (gsub);
-    if (gdef)
-        HB_Done_GDEF_Table (gdef);
-    hb_buffer_free(buffer);
+    hb_opentype_helper_free (&helper);
+    hb_buffer_free (buffer);
 }
 
 int
 main()
 {
     FT_Face face;
-    face = setup ();
+    face = loadFace ("DejaVu Sans");
 
     shapetest (face);
 
