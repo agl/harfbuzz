@@ -20,12 +20,10 @@
 #include <qendian.h>
 #include "ui_generator.h"
 
-#define private public
 #include <qfont.h>
 #include <private/qtextengine_p.h>
 #include <private/qfontengine_p.h>
 #include <qtextlayout.h>
-#undef private
 
 static QString generate(const QString &family, int pixelSize, const QString &sampleText)
 {
@@ -35,13 +33,12 @@ static QString generate(const QString &family, int pixelSize, const QString &sam
     font.setStyleStrategy(QFont::NoFontMerging);
     font.setKerning(false);
 
-    QTextLayout layout(sampleText, font);
-    QTextEngine *e = layout.d;
-    e->itemize();
-    e->shape(0);
+    QTextEngine e(sampleText, font);
+    e.itemize();
+    e.shape(0);
 
     QString result;
-    QFontEngine *fe = e->fontEngine(e->layoutData->items[0]);
+    QFontEngine *fe = e.fontEngine(e.layoutData->items[0]);
     result = "# Using font '" + fe->fontDef.family + "'\n";
 
     {
@@ -50,13 +47,13 @@ static QString generate(const QString &family, int pixelSize, const QString &sam
         result += "# Font Revision: " + QString::number(revision) + "\n";
     }
 
-    result += "# Text: " + sampleText;
+    result += "# Input Text: " + sampleText;
     result += "\n# Codepoints: ";
-    for (int i = 0; i < sampleText.length(); ++i) 
+    for (int i = 0; i < sampleText.length(); ++i)
         result += "0x" + QString::number(sampleText.at(i).unicode(), 16) + " ";
     result += "\n# Glyphs [glyph] [x advance] [x offset] [y offset]\n";
-    for (int i = 0; i < e->layoutData->items[0].num_glyphs; ++i) {
-        QGlyphLayout *g = e->layoutData->glyphPtr + i;
+    for (int i = 0; i < e.layoutData->items[0].num_glyphs; ++i) {
+        QGlyphLayout *g = e.layoutData->glyphPtr + i;
         result += "0x" + QString::number(g->glyph, 16);
         result += ' ';
         result += QString::number(g->advance.x.toReal());
