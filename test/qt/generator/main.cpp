@@ -17,6 +17,7 @@
 #include <QFontDatabase>
 #include <QCompleter>
 #include <QDirModel>
+#include <qendian.h>
 #include "ui_generator.h"
 
 #define private public
@@ -110,7 +111,14 @@ void Generator::on_sample_editingFinished()
     e->shape(0);
 
     QString result;
-    result = "# Using font '" + e->fontEngine(e->layoutData->items[0])->fontDef.family + "'\n";
+    QFontEngine *fe = e->fontEngine(e->layoutData->items[0]);
+    result = "# Using font '" + fe->fontDef.family + "'\n";
+
+    {
+        const QByteArray headTable = fe->getSfntTable(FT_MAKE_TAG('h', 'e', 'a', 'd'));
+        const quint32 revision = qFromBigEndian<quint32>(reinterpret_cast<const uchar *>(headTable.constData()) + 4);
+        result += "# Font Revision: " + QString::number(revision) + "\n";
+    }
 
     result += "# Text: ";
     for (int i = 0; i < str.length(); ++i) 
