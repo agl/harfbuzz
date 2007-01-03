@@ -199,7 +199,7 @@ shapetest(FT_Face face)
 
     printf ("output:\n");
     for (i = 0; i < buffer->in_length; ++i)
-        printf ("i %d glyph %4x\n", i, buffer->in_string[i].gindex);
+        printf ("i %d glyph %4x \n", i, buffer->in_string[i].gindex);
 
     hb_opentype_helper_free (&helper);
     hb_buffer_free (buffer);
