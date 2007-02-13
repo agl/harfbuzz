@@ -13,6 +13,8 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include <harfbuzz.h>
+
 FT_BEGIN_HEADER
 
 #include <stdint.h>
@@ -46,7 +48,7 @@ typedef enum {
         HB_Script_Runic,
         HB_Script_Khmer,
         HB_Script_Inherited,
-        HB_Script_ScriptCount = HB_Script_Inherited
+        HB_ScriptCount = HB_Script_Inherited
         /*
         HB_Script_Latin = Common,
         HB_Script_Ethiopic = Common,
@@ -93,6 +95,7 @@ typedef uint16_t HB_UChar16;
 typedef uint32_t HB_UChar32;
 typedef uint32_t HB_Glyph;
 typedef uint8_t HB_Bool;
+typedef uint32_t HB_Fixed; /* 26.6 */
 
 typedef struct
 {
@@ -146,6 +149,55 @@ inline HB_Bool HB_IsLowSurrogate(HB_UChar16 ucs) {
 inline HB_UChar32 HB_SurrogateToUcs4(HB_UChar16 high, HB_UChar16 low) {
     return (((HB_UChar32)high)<<10) + low - 0x35fdc00;
 }
+
+enum {
+    HB_LeftToRight = 0,
+    HB_RightToLeft = 1
+} HB_StringToGlyphsFlags;
+
+typedef struct HB_Font_ HB_Font;
+
+typedef struct {
+    HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, uint32_t flags);
+    void    (*getMetrics)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
+} HB_FontClass;
+
+typedef struct HB_Font_ {
+    HB_FontClass *klass;
+    FT_Face face;
+} HB_Font;
+
+typedef struct {
+} HB_GlyphLayout;
+
+enum {
+    HB_ShaperFlag_Default = 0,
+    HB_ShaperFlag_NoKerning = 1
+} HB_ShaperFlag;
+
+typedef struct {
+    FT_Face freetypeFace;
+
+    HB_GDEF gdef;
+    HB_GSUB gsub;
+    HB_GPOS gpos;
+    HB_Bool supported_scripts[HB_ScriptCount];
+    HB_Buffer buffer;
+    HB_Script current_script;
+    int current_flags;
+    HB_Bool has_opentype_kerning;
+#if 0
+    HB_Bool positioned;
+    HB_Bool glyphs_substituted;
+    QGlyphLayout::Attributes *tmpAttributes;
+    unsigned int *tmpLogClusters;
+#endif
+    int length;
+    int orig_nglyphs;
+} HB_Face;
+
+HB_Face *HB_NewFace(FT_Face ftface);
+void HB_FreeFace(HB_Face *face);
 
 FT_END_HEADER
 

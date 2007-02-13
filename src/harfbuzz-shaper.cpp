@@ -11,6 +11,9 @@
 #include "harfbuzz-shaper.h"
 #include "harfbuzz-shaper-private.h"
 
+#include "ftglue.h"
+#include <assert.h>
+
 // -----------------------------------------------------------------------------------------------------
 //
 // The line break algorithm. See http://www.unicode.org/reports/tr14/tr14-13.html
@@ -560,7 +563,7 @@ HB_Bool HB_TibetanShape() {}
 
 static HB_AttributeFunction thai_attributes = 0;
 
-const HB_ScriptEngine hb_scriptEngines[] = {
+const HB_ScriptEngine HB_ScriptEngines[] = {
     // Common
     { basic_shape, 0},
     // Greek
@@ -628,7 +631,7 @@ void HB_GetCharAttributes(const HB_UChar16 *string, uint32_t stringLength,
         HB_Script script = items[i].script;
         if (script == HB_Script_Inherited)
             script = HB_Script_Common;
-        HB_AttributeFunction attributeFunction = hb_scriptEngines[script].charAttributes;
+        HB_AttributeFunction attributeFunction = HB_ScriptEngines[script].charAttributes;
         if (!attributes)
             continue;
         int len = lastPos - items[i].pos;
@@ -637,4 +640,276 @@ void HB_GetCharAttributes(const HB_UChar16 *string, uint32_t stringLength,
     }
 }
 
+static inline char *tag_to_string(FT_ULong tag)
+{
+    static char string[5];
+    string[0] = (tag >> 24)&0xff;
+    string[1] = (tag >> 16)&0xff;
+    string[2] = (tag >> 8)&0xff;
+    string[3] = tag&0xff;
+    string[4] = 0;
+    return string;
+}
+
+#ifdef OT_DEBUG
+static void dump_string(HB_Buffer buffer)
+{
+    for (uint i = 0; i < buffer->in_length; ++i) {
+        qDebug("    %x: cluster=%d", buffer->in_string[i].gindex, buffer->in_string[i].cluster);
+    }
+}
+#define DEBUG printf
+#else
+#define DEBUG if (1) ; else printf
+#endif
+
+#define DefaultLangSys 0xffff
+#define DefaultScript FT_MAKE_TAG('D', 'F', 'L', 'T')
+
+enum {
+    RequiresGsub = 1,
+    RequiresGpos = 2
+};
+
+struct OTScripts {
+    unsigned int tag;
+    int flags;
+};
+static const OTScripts ot_scripts [] = {
+    // Common
+    { FT_MAKE_TAG('l', 'a', 't', 'n'), 0 },
+    // Greek
+    { FT_MAKE_TAG('g', 'r', 'e', 'k'), 0 },
+    // Cyrillic
+    { FT_MAKE_TAG('c', 'y', 'r', 'l'), 0 },
+    // Armenian
+    { FT_MAKE_TAG('a', 'r', 'm', 'n'), 0 },
+    // Hebrew
+    { FT_MAKE_TAG('h', 'e', 'b', 'r'), 1 },
+    // Arabic
+    { FT_MAKE_TAG('a', 'r', 'a', 'b'), 1 },
+    // Syriac
+    { FT_MAKE_TAG('s', 'y', 'r', 'c'), 1 },
+    // Thaana
+    { FT_MAKE_TAG('t', 'h', 'a', 'a'), 1 },
+    // Devanagari
+    { FT_MAKE_TAG('d', 'e', 'v', 'a'), 1 },
+    // Bengali
+    { FT_MAKE_TAG('b', 'e', 'n', 'g'), 1 },
+    // Gurmukhi
+    { FT_MAKE_TAG('g', 'u', 'r', 'u'), 1 },
+    // Gujarati
+    { FT_MAKE_TAG('g', 'u', 'j', 'r'), 1 },
+    // Oriya
+    { FT_MAKE_TAG('o', 'r', 'y', 'a'), 1 },
+    // Tamil
+    { FT_MAKE_TAG('t', 'a', 'm', 'l'), 1 },
+    // Telugu
+    { FT_MAKE_TAG('t', 'e', 'l', 'u'), 1 },
+    // Kannada
+    { FT_MAKE_TAG('k', 'n', 'd', 'a'), 1 },
+    // Malayalam
+    { FT_MAKE_TAG('m', 'l', 'y', 'm'), 1 },
+    // Sinhala
+    { FT_MAKE_TAG('s', 'i', 'n', 'h'), 1 },
+    // Thai
+    { FT_MAKE_TAG('t', 'h', 'a', 'i'), 1 },
+    // Lao
+    { FT_MAKE_TAG('l', 'a', 'o', ' '), 1 },
+    // Tibetan
+    { FT_MAKE_TAG('t', 'i', 'b', 't'), 1 },
+    // Myanmar
+    { FT_MAKE_TAG('m', 'y', 'm', 'r'), 1 },
+    // Georgian
+    { FT_MAKE_TAG('g', 'e', 'o', 'r'), 0 },
+    // Hangul
+    { FT_MAKE_TAG('h', 'a', 'n', 'g'), 1 },
+    // Ogham
+    { FT_MAKE_TAG('o', 'g', 'a', 'm'), 0 },
+    // Runic
+    { FT_MAKE_TAG('r', 'u', 'n', 'r'), 0 },
+    // Khmer
+    { FT_MAKE_TAG('k', 'h', 'm', 'r'), 1 }
+};
+enum { NumOTScripts = sizeof(ot_scripts)/sizeof(OTScripts) };
+
+static HB_Bool checkScript(HB_Face *face, int script)
+{
+    assert(script < HB_ScriptCount);
+
+    uint tag = ot_scripts[script].tag;
+    int requirements = ot_scripts[script].flags;
+
+    if (requirements & RequiresGsub) {
+        if (!face->gsub)
+            return false;
+
+        FT_UShort script_index;
+        FT_Error error = HB_GSUB_Select_Script(face->gsub, tag, &script_index);
+        if (error) {
+            DEBUG("could not select script %d in GSub table: %d", (int)script, error);
+            error = HB_GSUB_Select_Script(face->gsub, FT_MAKE_TAG('D', 'F', 'L', 'T'), &script_index);
+            if (error)
+                return false;
+        }
+    }
+
+    if (requirements & RequiresGpos) {
+        if (!face->gpos)
+            return false;
+
+        FT_UShort script_index;
+        FT_Error error = HB_GPOS_Select_Script(face->gpos, script, &script_index);
+        if (error) {
+            DEBUG("could not select script in gpos table: %d", error);
+            error = HB_GPOS_Select_Script(face->gpos, FT_MAKE_TAG('D', 'F', 'L', 'T'), &script_index);
+            if (error)
+                return false;
+        }
+
+    }
+    return true;
+}
+
+HB_Face *HB_NewFace(FT_Face ftface)
+{
+    HB_Face *face = (HB_Face *)malloc(sizeof(HB_Face));
+
+    face->freetypeFace = ftface;
+    face->gdef = 0;
+    face->gpos = 0;
+    face->gsub = 0;
+    face->current_script = HB_ScriptCount;
+    face->current_flags = HB_ShaperFlag_Default;
+    face->has_opentype_kerning = false;
+
+    FT_Error error;
+    if ((error = HB_Load_GDEF_Table(ftface, &face->gdef))) {
+        //DEBUG("error loading gdef table: %d", error);
+        face->gdef = 0;
+    }
+
+    //DEBUG() << "trying to load gsub table";
+    if ((error = HB_Load_GSUB_Table(ftface, &face->gsub, face->gdef))) {
+        face->gsub = 0;
+        if (error != FT_Err_Table_Missing) {
+            //DEBUG("error loading gsub table: %d", error);
+        } else {
+            //DEBUG("face doesn't have a gsub table");
+        }
+    }
+
+    if ((error = HB_Load_GPOS_Table(ftface, &face->gpos, face->gdef))) {
+        face->gpos = 0;
+        DEBUG("error loading gpos table: %d", error);
+    }
+
+    for (uint i = 0; i < HB_ScriptCount; ++i)
+        face->supported_scripts[i] = checkScript(face, i);
+
+    hb_buffer_new(ftface->memory, &face->buffer);
+
+    return face;
+}
+
+void HB_FreeFace(HB_Face *face)
+{
+    if (face->gpos)
+        HB_Done_GPOS_Table(face->gpos);
+    if (face->gsub)
+        HB_Done_GSUB_Table(face->gsub);
+    if (face->gdef)
+        HB_Done_GDEF_Table(face->gdef);
+    if (face->buffer)
+        hb_buffer_free(face->buffer);
+    free(face);
+}
+
+void HB_SelectScript(HB_Face *face, HB_Script script, int flags, HB_OpenTypeFeature *features)
+{
+    if (face->current_script == script && face->current_flags == flags)
+        return;
+
+    face->current_script = script;
+    face->current_flags = flags;
+
+    assert(script < HB_ScriptCount);
+    // find script in our list of supported scripts.
+    uint tag = ot_scripts[script].tag;
+
+    if (face->gsub && features) {
+#ifdef OT_DEBUG
+        {
+            HB_FeatureList featurelist = face->gsub->FeatureList;
+            int numfeatures = featurelist.FeatureCount;
+            DEBUG("gsub table has %d features", numfeatures);
+            for (int i = 0; i < numfeatures; i++) {
+                HB_FeatureRecord *r = featurelist.FeatureRecord + i;
+                DEBUG("   feature '%s'", tag_to_string(r->FeatureTag));
+            }
+        }
+#endif
+        HB_GSUB_Clear_Features(face->gsub);
+        FT_UShort script_index;
+        FT_Error error = HB_GSUB_Select_Script(face->gsub, tag, &script_index);
+        if (!error) {
+            DEBUG("script %s has script index %d", tag_to_string(script), script_index);
+            while (features->tag) {
+                FT_UShort feature_index;
+                error = HB_GSUB_Select_Feature(face->gsub, features->tag, script_index, 0xffff, &feature_index);
+                if (!error) {
+                    DEBUG("  adding feature %s", tag_to_string(features->tag));
+                    HB_GSUB_Add_Feature(face->gsub, feature_index, features->property);
+                }
+                ++features;
+            }
+        }
+    }
+
+    // reset
+    face->has_opentype_kerning = false;
+
+    if (face->gpos) {
+        HB_GPOS_Clear_Features(face->gpos);
+        FT_UShort script_index;
+        FT_Error error = HB_GPOS_Select_Script(face->gpos, tag, &script_index);
+        if (!error) {
+#ifdef OT_DEBUG
+            {
+                HB_FeatureList featurelist = face->gpos->FeatureList;
+                int numfeatures = featurelist.FeatureCount;
+                DEBUG("gpos table has %d features", numfeatures);
+                for(int i = 0; i < numfeatures; i++) {
+                    HB_FeatureRecord *r = featurelist.FeatureRecord + i;
+                    FT_UShort feature_index;
+                    HB_GPOS_Select_Feature(face->gpos, r->FeatureTag, script_index, 0xffff, &feature_index);
+                    DEBUG("   feature '%s'", tag_to_string(r->FeatureTag));
+                }
+            }
+#endif
+            FT_ULong *feature_tag_list_buffer;
+            error = HB_GPOS_Query_Features(face->gpos, script_index, 0xffff, &feature_tag_list_buffer);
+            if (!error) {
+                FT_ULong *feature_tag_list = feature_tag_list_buffer;
+                while (*feature_tag_list) {
+                    FT_UShort feature_index;
+                    if (*feature_tag_list == FT_MAKE_TAG('k', 'e', 'r', 'n')) {
+                        if (face->current_flags & HB_ShaperFlag_NoKerning) {
+                            ++feature_tag_list;
+                            continue;
+                        }
+                        face->has_opentype_kerning = true;
+                    }
+                    error = HB_GPOS_Select_Feature(face->gpos, *feature_tag_list, script_index, 0xffff, &feature_index);
+                    if (!error)
+                        HB_GPOS_Add_Feature(face->gpos, feature_index, PositioningProperties);
+                    ++feature_tag_list;
+                }
+                FT_Memory memory = face->gpos->memory;
+                FREE(feature_tag_list_buffer);
+            }
+        }
+    }
+
+}
 

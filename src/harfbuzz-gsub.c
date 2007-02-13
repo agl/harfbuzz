@@ -3967,7 +3967,7 @@ FT_Error  HB_GSUB_Select_Language( HB_GSUBHeader*  gsub,
 
   HB_ScriptList*     sl;
   HB_ScriptRecord*   sr;
-  HB_Script*         s;
+  HB_ScriptTable*    s;
   HB_LangSysRecord*  lsr;
 
 
@@ -4010,7 +4010,7 @@ FT_Error  HB_GSUB_Select_Feature( HB_GSUBHeader*  gsub,
 
   HB_ScriptList*     sl;
   HB_ScriptRecord*   sr;
-  HB_Script*         s;
+  HB_ScriptTable*    s;
   HB_LangSysRecord*  lsr;
   HB_LangSys*        ls;
   FT_UShort*          fi;
@@ -4111,7 +4111,7 @@ FT_Error  HB_GSUB_Query_Languages( HB_GSUBHeader*  gsub,
 
   HB_ScriptList*     sl;
   HB_ScriptRecord*   sr;
-  HB_Script*         s;
+  HB_ScriptTable*    s;
   HB_LangSysRecord*  lsr;
 
 
@@ -4158,7 +4158,7 @@ FT_Error  HB_GSUB_Query_Features( HB_GSUBHeader*  gsub,
 
   HB_ScriptList*     sl;
   HB_ScriptRecord*   sr;
-  HB_Script*         s;
+  HB_ScriptTable*    s;
   HB_LangSysRecord*  lsr;
   HB_LangSys*        ls;
   FT_UShort*          fi;

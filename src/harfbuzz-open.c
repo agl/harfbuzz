@@ -70,7 +70,7 @@ static void  Free_LangSys( HB_LangSys*  ls,
 
 /* Script */
 
-static FT_Error  Load_Script( HB_Script*  s,
+static FT_Error  Load_Script( HB_ScriptTable*  s,
 			      FT_Stream    stream )
 {
   FT_Error   error;
@@ -163,7 +163,7 @@ Fail2:
 }
 
 
-static void  Free_Script( HB_Script*  s,
+static void  Free_Script( HB_ScriptTable*  s,
 			  FT_Memory    memory )
 {
   FT_UShort           n, count;
