@@ -2,6 +2,7 @@ AC_INIT(README)
 AM_INIT_AUTOMAKE(harfbuzz, 0.1)
 AM_MAINTAINER_MODE
 AC_PROG_CC
+AC_PROG_CXX
 AM_PROG_LIBTOOL
 PKG_PROG_PKG_CONFIG
 AM_CONFIG_HEADER(config.h)
@@ -21,8 +22,30 @@ PKG_CHECK_MODULES([FONTCONFIG], [fontconfig])
 AC_SUBST(FONTCONFIG_CFLAGS)
 AC_SUBST(FONTCONFIG_LIBS)
 
+AC_ARG_ENABLE(qt, AS_HELP_STRING([--disable-qt], [Build Qt support (default: auto)]), [QT=$enableval], [QT=auto])
+
+if test "x$QT" = xauto; then
+    PKG_CHECK_MODULES(QT, [QtGui >= 4.3], [QT=yes], [QT=no])
+fi
+if test "x$QT" = xyes; then
+    PKG_CHECK_MODULES(QT_GUI, [QtGui >= 4.3])
+    PKG_CHECK_MODULES(QT_QTEST, [QtTest >= 4.3])
+
+    AC_SUBST(QT_GUI_CFLAGS)
+    AC_SUBST(QT_GUI_LIBS)
+    AC_SUBST(QT_QTEST_CFLAGS)
+    AC_SUBST(QT_QTEST_LIBS)
+
+    _PKG_CONFIG(QT_MOC, [variable=moc_location], [QtGui >= 4.3])
+    QT_MOC=$pkg_cv_QT_MOC
+    AC_SUBST(QT_MOC)
+fi
+AM_CONDITIONAL(QT, [test "x$QT" = xyes])
+
 AC_OUTPUT([
 Makefile
 src/Makefile
 test/Makefile
+tests/Makefile
+tests/linebreaking/Makefile
 ])

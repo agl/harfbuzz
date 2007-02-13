@@ -12,7 +12,12 @@ MAINSOURCES =  \
 	harfbuzz-gdef.c \
 	harfbuzz-gpos.c \
 	harfbuzz-gsub.c \
-	harfbuzz-open.c
+	harfbuzz-open.c \
+	harfbuzz-shaper.cpp \
+	harfbuzz-tibetan.cpp \
+	harfbuzz-myanmar.cpp \
+	harfbuzz-khmer.cpp \
+	harfbuzz-indic.cpp
 
 EXTRA_SOURCES = harfbuzz.c
 
@@ -23,7 +28,8 @@ PUBLICHEADERS = \
 	harfbuzz-gdef.h \
 	harfbuzz-gpos.h \
 	harfbuzz-gsub.h \
-	harfbuzz-open.h
+	harfbuzz-open.h \
+	harfbuzz-shaper.h
 
 PRIVATEHEADERS = \
 	ftglue.h \
@@ -31,7 +37,8 @@ PRIVATEHEADERS = \
 	harfbuzz-gdef-private.h \
 	harfbuzz-gpos-private.h \
 	harfbuzz-gsub-private.h \
-	harfbuzz-open-private.h
+	harfbuzz-open-private.h \
+	harfbuzz-shaper-private.h
 
 libharfbuzz_1_la_SOURCES = \
 	$(MAINSOURCES) \

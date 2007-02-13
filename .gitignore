@@ -5,8 +5,14 @@ autom4te.cache
 config.guess
 config.h.in
 config.sub
+config.h
 configure
 depcomp
 install-sh
 ltmain.sh
 missing
+Makefile
+config.status
+config.log
+libtool
+stamp-h1
