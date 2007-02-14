@@ -511,7 +511,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
 }
 
 static HB_Bool indic_shape(HB_ShaperItem *) {}
-HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
 static HB_AttributeFunction thai_attributes = 0;
 

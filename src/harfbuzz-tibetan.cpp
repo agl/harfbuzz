@@ -9,6 +9,7 @@
  ******************************************************************/
 
 #include "harfbuzz-shaper.h"
+#include "harfbuzz-shaper-private.h"
 
 #include <assert.h>
 
@@ -77,65 +78,67 @@ static inline TibetanForm tibetan_form(HB_UChar16 c)
     return (TibetanForm)tibetanForm[c - 0x0f40];
 }
 
-#if 0
-static const QOpenType::Features tibetan_features[] = {
+static const HB_OpenTypeFeature tibetan_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('a', 'b', 'v', 's'), AboveSubstProperty },
     { FT_MAKE_TAG('b', 'l', 'w', 's'), BelowSubstProperty },
     {0, 0}
 };
 
-static bool tibetan_shape_syllable(QOpenType *openType, QShaperItem *item, bool invalid)
+static bool tibetan_shape_syllable(HB_Bool openType, HB_ShaperItem *item, bool invalid)
 {
-    Q_UNUSED(openType)
-    int len = item->length;
+    int len = item->item.length;
 
-    if (item->num_glyphs < item->length + 4) {
-        item->num_glyphs = item->length + 4;
+    if (item->num_glyphs < item->item.length + 4) {
+        item->num_glyphs = item->item.length + 4;
         return false;
     }
 
     int i;
-    QVarLengthArray<unsigned short> reordered(len+4);
+    HB_STACKARRAY(HB_UChar16, reordered, len + 4);
 
-    const QChar *str = item->string->unicode() + item->from;
+    const HB_UChar16 *str = item->string + item->item.pos;
     if (invalid) {
-        *reordered.data() = 0x25cc;
-        memcpy(reordered.data()+1, str, len*sizeof(QChar));
+        *reordered = 0x25cc;
+        memcpy(reordered+1, str, len*sizeof(HB_UChar16));
         len++;
-        str = (QChar *)reordered.data();
+        str = reordered;
     }
 
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->stringToCMap(str, len, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    HB_Bool haveGlyphs = item->font->klass->stringToGlyphs(item->font,
+                                                           str, len,
+                                                           item->glyphs, &item->num_glyphs,
+                                                           item->item.bidiLevel % 2);
+
+    HB_FREE_STACKARRAY(reordered);
+
+    if (!haveGlyphs)
         return false;
 
-    for (i = 0; i < item->length; i++) {
-        item->glyphs[i].attributes.mark = false;
-        item->glyphs[i].attributes.clusterStart = false;
-        item->glyphs[i].attributes.justification = 0;
-        item->glyphs[i].attributes.zeroWidth = false;
-        IDEBUG("    %d: %4x", i, str[i].unicode());
+    for (i = 0; i < item->item.length; i++) {
+        item->attributes[i].mark = false;
+        item->attributes[i].clusterStart = false;
+        item->attributes[i].justification = 0;
+        item->attributes[i].zeroWidth = false;
+//        IDEBUG("    %d: %4x", i, str[i]);
     }
 
     // now we have the syllable in the right order, and can start running it through open type.
 
-#ifndef QT_NO_OPENTYPE
-    if (openType && openType->supportsScript(QUnicodeTables::Tibetan)) {
-        openType->selectScript(item, QUnicodeTables::Tibetan, tibetan_features);
-
-        openType->shape(item);
-        if (!openType->positionAndAdd(item, availableGlyphs, false))
+#ifndef NO_OPENTYPE
+    if (openType) {
+        HB_OpenTypeShape(item, /*properties*/0);
+        if (!HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/false))
             return false;
     }
 #endif
 
-    item->glyphs[0].attributes.clusterStart = true;
+    item->attributes[0].clusterStart = true;
     return true;
 }
-#endif
 
 
 static int tibetan_nextSyllableBoundary(const HB_UChar16 *s, int start, int end, bool *invalid)
@@ -145,7 +148,7 @@ static int tibetan_nextSyllableBoundary(const HB_UChar16 *s, int start, int end,
     int pos = 0;
     TibetanForm state = tibetan_form(*uc);
 
-//     qDebug("state[%d]=%d (uc=%4x)", pos, state, uc[pos].unicode());
+//     qDebug("state[%d]=%d (uc=%4x)", pos, state, uc[pos]);
     pos++;
 
     if (state != TibetanHeadConsonant) {
@@ -182,33 +185,30 @@ finish:
     return start+pos;
 }
 
-#if 0
-static bool tibetan_shape(QShaperItem *item)
+HB_Bool HB_TibetanShape(HB_ShaperItem *item)
 {
-    Q_ASSERT(item->script == QUnicodeTables::Tibetan);
+    assert(item->item.script == HB_Script_Tibetan);
 
+    HB_Bool openType = false;
 #ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (openType && !openType->supportsScript(item->script))
-        openType = 0;
-#else
-    QOpenType *openType = 0;
+    openType = HB_SelectScript(item, tibetan_features);
 #endif
     unsigned short *logClusters = item->log_clusters;
 
-    QShaperItem syllable = *item;
+    HB_ShaperItem syllable = *item;
     int first_glyph = 0;
 
-    int sstart = item->from;
-    int end = sstart + item->length;
+    int sstart = item->item.pos;
+    int end = sstart + item->item.length;
     while (sstart < end) {
         bool invalid;
-        int send = tibetan_nextSyllableBoundary(*(item->string), sstart, end, &invalid);
-        IDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
-               invalid ? "true" : "false");
-        syllable.from = sstart;
-        syllable.length = send-sstart;
+        int send = tibetan_nextSyllableBoundary(item->string, sstart, end, &invalid);
+//        IDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
+//               invalid ? "true" : "false");
+        syllable.item.pos = sstart;
+        syllable.item.length = send-sstart;
         syllable.glyphs = item->glyphs + first_glyph;
+        syllable.attributes = item->attributes + first_glyph;
         syllable.num_glyphs = item->num_glyphs - first_glyph;
         if (!tibetan_shape_syllable(openType, &syllable, invalid)) {
             item->num_glyphs += syllable.num_glyphs;
@@ -216,14 +216,13 @@ static bool tibetan_shape(QShaperItem *item)
         }
         // fix logcluster array
         for (int i = sstart; i < send; ++i)
-            logClusters[i-item->from] = first_glyph;
+            logClusters[i-item->item.pos] = first_glyph;
         sstart = send;
         first_glyph += syllable.num_glyphs;
     }
     item->num_glyphs = first_glyph;
     return true;
 }
-#endif
 
 extern "C" void HB_TibetanAttributes(HB_Script /*script*/, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
 {
