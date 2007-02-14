@@ -97,9 +97,15 @@ typedef uint32_t HB_Glyph;
 typedef uint8_t HB_Bool;
 typedef uint32_t HB_Fixed; /* 26.6 */
 
+typedef struct {
+    HB_Fixed x;
+    HB_Fixed y;
+} HB_FixedPoint;
+
 typedef struct
 {
     uint32_t pos;
+    uint32_t length;
     HB_Script script;
     uint8_t bidiLevel;
 } HB_ScriptItem;
@@ -124,8 +130,51 @@ typedef enum {
     HB_LineBreak_SP, HB_LineBreak_CR, HB_LineBreak_LF, HB_LineBreak_BK
 } HB_LineBreakClass;
 
+typedef enum 
+{
+    HB_NoCategory,
+
+    HB_Mark_NonSpacing,          //   Mn
+    HB_Mark_SpacingCombining,    //   Mc
+    HB_Mark_Enclosing,           //   Me
+
+    HB_Number_DecimalDigit,      //   Nd
+    HB_Number_Letter,            //   Nl
+    HB_Number_Other,             //   No
+
+    HB_Separator_Space,          //   Zs
+    HB_Separator_Line,           //   Zl
+    HB_Separator_Paragraph,      //   Zp
+
+    HB_Other_Control,            //   Cc
+    HB_Other_Format,             //   Cf
+    HB_Other_Surrogate,          //   Cs
+    HB_Other_PrivateUse,         //   Co
+    HB_Other_NotAssigned,        //   Cn
+
+    HB_Letter_Uppercase,         //   Lu
+    HB_Letter_Lowercase,         //   Ll
+    HB_Letter_Titlecase,         //   Lt
+    HB_Letter_Modifier,          //   Lm
+    HB_Letter_Other,             //   Lo
+
+    HB_Punctuation_Connector,    //   Pc
+    HB_Punctuation_Dash,         //   Pd
+    HB_Punctuation_Open,         //   Ps
+    HB_Punctuation_Close,        //   Pe
+    HB_Punctuation_InitialQuote, //   Pi
+    HB_Punctuation_FinalQuote,   //   Pf
+    HB_Punctuation_Other,        //   Po
+
+    HB_Symbol_Math,              //   Sm
+    HB_Symbol_Currency,          //   Sc
+    HB_Symbol_Modifier,          //   Sk
+    HB_Symbol_Other,             //   So
+} HB_CharCategory;
+
 /* needs to be provided by the application/library */
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch);
+void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *combiningClass);
 
 typedef struct {
     HB_LineBreakType lineBreakType  :2;
@@ -150,33 +199,19 @@ inline HB_UChar32 HB_SurrogateToUcs4(HB_UChar16 high, HB_UChar16 low) {
     return (((HB_UChar32)high)<<10) + low - 0x35fdc00;
 }
 
-enum {
+typedef enum {
     HB_LeftToRight = 0,
     HB_RightToLeft = 1
 } HB_StringToGlyphsFlags;
 
-typedef struct HB_Font_ HB_Font;
-
-typedef struct {
-    HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, uint32_t flags);
-    void    (*getMetrics)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
-} HB_FontClass;
-
-typedef struct HB_Font_ {
-    HB_FontClass *klass;
-    FT_Face face;
-} HB_Font;
-
-typedef struct {
-} HB_GlyphLayout;
-
-enum {
+typedef enum {
     HB_ShaperFlag_Default = 0,
     HB_ShaperFlag_NoKerning = 1
 } HB_ShaperFlag;
 
 typedef struct {
     FT_Face freetypeFace;
+    HB_Bool isSymbolFont;
 
     HB_GDEF gdef;
     HB_GSUB gsub;
@@ -196,8 +231,66 @@ typedef struct {
     int orig_nglyphs;
 } HB_Face;
 
+typedef struct HB_Font_ HB_Font;
+
+typedef struct {
+    HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, uint32_t flags);
+    void    (*getAdvances)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
+} HB_FontClass;
+
+typedef struct HB_Font_ {
+    HB_FontClass *klass;
+    HB_Face face;
+} HB_Font;
+
+// highest value means highest priority for justification. Justification is done by first inserting kashidas
+// starting with the highest priority positions, then stretching spaces, afterwards extending inter char
+// spacing, and last spacing between arabic words.
+// NoJustification is for example set for arabic where no Kashida can be inserted or for diacritics.
+typedef enum {
+    HB_NoJustification= 0,   // Justification can't be applied after this glyph
+    HB_Arabic_Space   = 1,   // This glyph represents a space inside arabic text
+    HB_Character      = 2,   // Inter-character justification point follows this glyph
+    HB_Space          = 4,   // This glyph represents a blank outside an Arabic run
+    HB_Arabic_Normal  = 7,   // Normal Middle-Of-Word glyph that connects to the right (begin)
+    HB_Arabic_Waw     = 8,    // Next character is final form of Waw/Ain/Qaf/Fa
+    HB_Arabic_BaRa    = 9,   // Next two chars are Ba + Ra/Ya/AlefMaksura
+    HB_Arabic_Alef    = 10,  // Next character is final form of Alef/Tah/Lam/Kaf/Gaf
+    HB_Arabic_HaaDal  = 11,  // Next character is final form of Haa/Dal/Taa Marbutah
+    HB_Arabic_Seen    = 12,  // Initial or Medial form Of Seen/Sad
+    HB_Arabic_Kashida = 13   // Kashida(U+640) in middle of word
+} HB_JustificationClass;
+
+typedef struct {
+    unsigned short justification   :4;  // Justification class
+    unsigned short clusterStart    :1;  // First glyph of representation of cluster
+    unsigned short mark            :1;  // needs to be positioned around base char
+    unsigned short zeroWidth       :1;  // ZWJ, ZWNJ etc, with no width
+    unsigned short dontPrint       :1;
+    unsigned short combiningClass  :8;
+} HB_GlyphAttributes;
+
+typedef struct {
+    const HB_UChar16 *string;
+    HB_ScriptItem item;
+    HB_Font *font;
+    int shaperFlags; // HB_ShaperFlags
+
+    uint32_t num_glyphs; // in: available glyphs out: glyphs used/needed
+    HB_Glyph *glyphs; // out parameter
+    HB_GlyphAttributes *attributes; // out
+    HB_Fixed *advances; // out
+    HB_FixedPoint *offsets; // out
+    unsigned short *log_clusters; // out
+
+    // internal
+    HB_Bool kerning_applied; // out: kerning applied by shaper
+} HB_ShaperItem;
+
 HB_Face *HB_NewFace(FT_Face ftface);
 void HB_FreeFace(HB_Face *face);
+
+HB_Bool HB_ShapeItem(HB_ShaperItem *item);
 
 FT_END_HEADER
 

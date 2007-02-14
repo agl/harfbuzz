@@ -12,23 +12,34 @@
 
 FT_BEGIN_HEADER
 
-typedef struct {
-    HB_Script script;
-    const HB_UChar16 *string;
-    int from;
-    int length;
-    HB_Font *font;
-    HB_GlyphLayout *glyphs;
-    int num_glyphs; // in: available glyphs out: glyphs used/needed
-    unsigned short *log_clusters;
-    int flags; // HB_StringToGlyphsFlags
-    int shaperFlags; // HB_ShaperFlags
-    HB_Bool kerning_applied; // out: kerning applied by shaper
-    const HB_CharAttributes *charAttributes;
-} HB_ShaperItem;
+typedef enum 
+{
+    HB_Combining_BelowLeftAttached       = 200,
+    HB_Combining_BelowAttached           = 202,
+    HB_Combining_BelowRightAttached      = 204,
+    HB_Combining_LeftAttached            = 208,
+    HB_Combining_RightAttached           = 210,
+    HB_Combining_AboveLeftAttached       = 212,
+    HB_Combining_AboveAttached           = 214,
+    HB_Combining_AboveRightAttached      = 216,
+
+    HB_Combining_BelowLeft               = 218,
+    HB_Combining_Below                   = 220,
+    HB_Combining_BelowRight              = 222,
+    HB_Combining_Left                    = 224,
+    HB_Combining_Right                   = 226,
+    HB_Combining_AboveLeft               = 228,
+    HB_Combining_Above                   = 230,
+    HB_Combining_AboveRight              = 232,
+
+    HB_Combining_DoubleBelow             = 233,
+    HB_Combining_DoubleAbove             = 234,
+    HB_Combining_IotaSubscript           = 240
+} HB_CombiningClass;
+
 
 // return true if ok.
-typedef HB_Bool (*HB_ShapeFunction)();
+typedef HB_Bool (*HB_ShapeFunction)(HB_ShaperItem *shaper_item);
 typedef void (*HB_AttributeFunction)(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 
 typedef struct {
@@ -38,7 +49,7 @@ typedef struct {
 
 extern const HB_ScriptEngine hb_scriptEngines[];
 
-extern HB_Bool HB_TibetanShape();
+extern HB_Bool HB_TibetanShape(HB_ShaperItem *shaper_item);
 
 extern void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 
@@ -55,7 +66,7 @@ typedef struct {
 
 enum { PositioningProperties = 0x80000000 };
 
-void HB_SelectScript(HB_Face *face, HB_Script script, int flags, HB_OpenTypeFeature *features);
+void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features);
 
 FT_END_HEADER
 

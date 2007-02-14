@@ -197,21 +197,17 @@ static void calcLineBreaks(const HB_UChar16 *uc, uint32_t len, HB_CharAttributes
     charAttributes[len-1].lineBreakType = HB_ForcedBreak;
 }
 
-#if 0
-
 // --------------------------------------------------------------------------------------------------------------------------------------------
 //
 // Basic processing
 //
 // --------------------------------------------------------------------------------------------------------------------------------------------
 
-static inline void positionCluster(QShaperItem *item, int gfrom,  int glast)
+static inline void positionCluster(HB_ShaperItem *item, int gfrom,  int glast)
 {
+#if 0
     int nmarks = glast - gfrom;
-    if (nmarks <= 0) {
-        qWarning("Qt: No marks to position in positionCluster()");
-        return;
-    }
+    assert(nmarks > 0);
 
     QGlyphLayout *glyphs = item->glyphs;
     QFontEngine *f = item->font;
@@ -349,47 +345,52 @@ static inline void positionCluster(QShaperItem *item, int gfrom,  int glast)
         }
         glyphs[gfrom+i].advance = QFixedPoint();
     }
+#endif
 }
 
-
-void qt_heuristicPosition(QShaperItem *item)
+static void heuristicPosition(HB_ShaperItem *item)
 {
-    QGlyphLayout *glyphs = item->glyphs;
+    HB_GlyphAttributes *attributes = item->attributes;
 
     int cEnd = -1;
     int i = item->num_glyphs;
     while (i--) {
-        if (cEnd == -1 && glyphs[i].attributes.mark) {
+        if (cEnd == -1 && attributes[i].mark) {
             cEnd = i;
-        } else if (cEnd != -1 && !glyphs[i].attributes.mark) {
+        } else if (cEnd != -1 && !attributes[i].mark) {
             positionCluster(item, i, cEnd);
             cEnd = -1;
         }
     }
 }
 
-
+static inline bool isControlChar(HB_UChar16 uc)
+{
+    return (uc >= 0x200b && uc <= 0x200f /* ZW Space, ZWNJ, ZWJ, LRM and RLM */)
+            || (uc >= 0x2028 && uc <= 0x202f /* LS, PS, LRE, RLE, PDF, LRO, RLO, NNBSP */)
+            || (uc >= 0x206a && uc <= 0x206f /* ISS, ASS, IAFS, AFS, NADS, NODS */);
+}
 
 // set the glyph attributes heuristically. Assumes a 1 to 1 relationship between chars and glyphs
 // and no reordering.
 // also computes logClusters heuristically
-static void heuristicSetGlyphAttributes(QShaperItem *item, const QChar *uc, int length)
+static void heuristicSetGlyphAttributes(HB_ShaperItem *item)
 {
+    const HB_UChar16 *uc = item->string + item->item.pos;
+    uint32_t length = item->item.length;
+
     // ### zeroWidth and justification are missing here!!!!!
 
-    Q_ASSERT(item->num_glyphs <= length);
+    assert(item->num_glyphs <= length);
 
 //     qDebug("QScriptEngine::heuristicSetGlyphAttributes, num_glyphs=%d", item->num_glyphs);
-    QGlyphLayout *glyphs = item->glyphs;
+    HB_GlyphAttributes *attributes = item->attributes;
     unsigned short *logClusters = item->log_clusters;
 
-
-    // the mac font engine does the setup already in stringToCMap
-#ifndef Q_WS_MAC
     int glyph_pos = 0;
     for (int i = 0; i < length; i++) {
-        if (uc[i].unicode() >= 0xd800 && uc[i].unicode() < 0xdc00 && i < length-1
-            && uc[i+1].unicode() >= 0xdc00 && uc[i+1].unicode() < 0xe000) {
+        if (HB_IsHighSurrogate(uc[i]) && i < length - 1
+            && HB_IsLowSurrogate(uc[i + 1])) {
             logClusters[i] = glyph_pos;
             logClusters[++i] = glyph_pos;
         } else {
@@ -397,113 +398,99 @@ static void heuristicSetGlyphAttributes(QShaperItem *item, const QChar *uc, int 
         }
         ++glyph_pos;
     }
-    Q_ASSERT(glyph_pos == item->num_glyphs);
-#endif
+    assert(glyph_pos == item->num_glyphs);
 
     // first char in a run is never (treated as) a mark
-#if !defined(Q_WS_MAC)
     int cStart = 0;
-#endif
-    const bool symbolFont = item->font->symbol;
-    glyphs[0].attributes.mark = false;
-    glyphs[0].attributes.clusterStart = true;
-    glyphs[0].attributes.dontPrint = (!symbolFont && uc[0].unicode() == 0x00ad) || qIsControlChar(uc[0].unicode());
+    const bool symbolFont = item->font->face.isSymbolFont;
+    attributes[0].mark = false;
+    attributes[0].clusterStart = true;
+    attributes[0].dontPrint = (!symbolFont && uc[0] == 0x00ad) || isControlChar(uc[0]);
 
     int pos = 0;
-    int lastCat = QChar::category(uc[0].unicode());
+    HB_CharCategory lastCat;
+    int dummy;
+    HB_GetUnicodeCharProperties(uc[0], &lastCat, &dummy);
     for (int i = 1; i < length; ++i) {
         if (logClusters[i] == pos)
             // same glyph
             continue;
         ++pos;
         while (pos < logClusters[i]) {
-            // the mac engine already has attributes setup properly
-#if !defined(Q_WS_MAC)
-            glyphs[pos].attributes = glyphs[pos-1].attributes;
-#endif
+            attributes[pos] = attributes[pos-1];
             ++pos;
         }
         // hide soft-hyphens by default
-        if ((!symbolFont && uc[i].unicode() == 0x00ad) || qIsControlChar(uc[i].unicode()))
-            glyphs[pos].attributes.dontPrint = true;
-        const QUnicodeTables::Properties *prop = QUnicodeTables::properties(uc[i].unicode());
-        int cat = prop->category;
-#if !defined(Q_WS_MAC)
-        if (cat != QChar::Mark_NonSpacing) {
-            glyphs[pos].attributes.mark = false;
-            glyphs[pos].attributes.clusterStart = true;
-            glyphs[pos].attributes.combiningClass = 0;
+        if ((!symbolFont && uc[i] == 0x00ad) || isControlChar(uc[i]))
+            attributes[pos].dontPrint = true;
+        HB_CharCategory cat;
+        int cmb;
+        HB_GetUnicodeCharProperties(uc[i], &cat, &cmb);
+        if (cat != HB_Mark_NonSpacing) {
+            attributes[pos].mark = false;
+            attributes[pos].clusterStart = true;
+            attributes[pos].combiningClass = 0;
             cStart = logClusters[i];
         } else {
-            int cmb = prop->combiningClass;
-
             if (cmb == 0) {
                 // Fix 0 combining classes
-                if ((uc[pos].unicode() & 0xff00) == 0x0e00) {
+                if ((uc[pos] & 0xff00) == 0x0e00) {
                     // thai or lao
-                    unsigned char col = uc[pos].cell();
-                    if (col == 0x31 ||
-                         col == 0x34 ||
-                         col == 0x35 ||
-                         col == 0x36 ||
-                         col == 0x37 ||
-                         col == 0x47 ||
-                         col == 0x4c ||
-                         col == 0x4d ||
-                         col == 0x4e) {
-                        cmb = QChar::Combining_AboveRight;
-                    } else if (col == 0xb1 ||
-                                col == 0xb4 ||
-                                col == 0xb5 ||
-                                col == 0xb6 ||
-                                col == 0xb7 ||
-                                col == 0xbb ||
-                                col == 0xcc ||
-                                col == 0xcd) {
-                        cmb = QChar::Combining_Above;
-                    } else if (col == 0xbc) {
-                        cmb = QChar::Combining_Below;
+                    if (uc[pos] == 0xe31 ||
+                         uc[pos] == 0xe34 ||
+                         uc[pos] == 0xe35 ||
+                         uc[pos] == 0xe36 ||
+                         uc[pos] == 0xe37 ||
+                         uc[pos] == 0xe47 ||
+                         uc[pos] == 0xe4c ||
+                         uc[pos] == 0xe4d ||
+                         uc[pos] == 0xe4e) {
+                        cmb = HB_Combining_AboveRight;
+                    } else if (uc[pos] == 0xeb1 ||
+                                uc[pos] == 0xeb4 ||
+                                uc[pos] == 0xeb5 ||
+                                uc[pos] == 0xeb6 ||
+                                uc[pos] == 0xeb7 ||
+                                uc[pos] == 0xebb ||
+                                uc[pos] == 0xecc ||
+                                uc[pos] == 0xecd) {
+                        cmb = HB_Combining_Above;
+                    } else if (uc[pos] == 0xebc) {
+                        cmb = HB_Combining_Below;
                     }
                 }
             }
 
-            glyphs[pos].attributes.mark = true;
-            glyphs[pos].attributes.clusterStart = false;
-            glyphs[pos].attributes.combiningClass = cmb;
+            attributes[pos].mark = true;
+            attributes[pos].clusterStart = false;
+            attributes[pos].combiningClass = cmb;
             logClusters[i] = cStart;
-            glyphs[pos].advance = QFixedPoint();
         }
-#endif
         // one gets an inter character justification point if the current char is not a non spacing mark.
         // as then the current char belongs to the last one and one gets a space justification point
         // after the space char.
-        if (lastCat == QChar::Separator_Space)
-            glyphs[pos-1].attributes.justification = QGlyphLayout::Space;
-        else if (cat != QChar::Mark_NonSpacing)
-            glyphs[pos-1].attributes.justification = QGlyphLayout::Character;
+        if (lastCat == HB_Separator_Space)
+            attributes[pos-1].justification = HB_Space;
+        else if (cat != HB_Mark_NonSpacing)
+            attributes[pos-1].justification = HB_Character;
         else
-            glyphs[pos-1].attributes.justification = QGlyphLayout::NoJustification;
+            attributes[pos-1].justification = HB_NoJustification;
 
         lastCat = cat;
     }
     pos = logClusters[length-1];
-    if (lastCat == QChar::Separator_Space)
-        glyphs[pos].attributes.justification = QGlyphLayout::Space;
+    if (lastCat == HB_Separator_Space)
+        attributes[pos].justification = HB_Space;
     else
-        glyphs[pos].attributes.justification = QGlyphLayout::Character;
+        attributes[pos].justification = HB_Character;
 }
 
-static void heuristicSetGlyphAttributes(QShaperItem *item)
-{
-    heuristicSetGlyphAttributes(item, item->string->unicode() + item->from, item->length);
-}
-
-enum {
+typedef enum {
     CcmpProperty = 0x1
 };
 
-#ifndef QT_NO_OPENTYPE
-static const QOpenType::Features basic_features[] = {
+#ifndef NO_OPENTYPE
+static const HB_OpenTypeFeature basic_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('l', 'i', 'g', 'a'), CcmpProperty },
     { FT_MAKE_TAG('c', 'l', 'i', 'g'), CcmpProperty },
@@ -511,55 +498,44 @@ static const QOpenType::Features basic_features[] = {
 };
 #endif
 
-static bool basic_shape(QShaperItem *item)
+static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
 {
-
-#ifndef QT_NO_OPENTYPE
-    const int availableGlyphs = item->num_glyphs;
+#ifndef NO_OPENTYPE
+    const int availableGlyphs = shaper_item->num_glyphs;
 #endif
 
-    if (!item->font->stringToCMap(item->string->unicode()+item->from, item->length,
-                                  item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+                                           shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
+                                           shaper_item->glyphs, &shaper_item->num_glyphs,
+                                           shaper_item->item.bidiLevel % 2 ? HB_RightToLeft : HB_LeftToRight))
         return false;
-    heuristicSetGlyphAttributes(item);
 
-#ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (!openType && item->font->type() == QFontEngine::Multi) {
-        openType = static_cast<QFontEngineMulti *>(item->font)->engine(0)->openType();
-        if (openType) {
-            for (int i = 0; i < item->num_glyphs; ++i) {
-                if (item->glyphs[i].glyph & 0xff000000) {
-                    openType = 0;
-                    break;
-                }
-            }
-        }
-    }
-    if (openType && openType->supportsScript(item->script)) {
-        openType->selectScript(item, item->script, basic_features);
+    heuristicSetGlyphAttributes(shaper_item);
 
+#ifndef NO_OPENTYPE
+    if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
+        HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, basic_features);
+
+#if 0
         openType->shape(item);
         return openType->positionAndAdd(item, availableGlyphs);
+#endif
     }
-
 #endif
 
-    qt_heuristicPosition(item);
+    heuristicPosition(shaper_item);
     return true;
 }
-#endif
 
-static HB_Bool basic_shape() {}
-static HB_Bool hebrew_shape() {}
-static HB_Bool arabic_shape() {}
-static HB_Bool syriac_shape() {}
-static HB_Bool thaana_shape() {}
-static HB_Bool indic_shape() {}
-static HB_Bool myanmar_shape() {}
-static HB_Bool hangul_shape() {}
-static HB_Bool khmer_shape() {}
-HB_Bool HB_TibetanShape() {}
+static HB_Bool hebrew_shape(HB_ShaperItem *) {}
+static HB_Bool arabic_shape(HB_ShaperItem *) {}
+static HB_Bool syriac_shape(HB_ShaperItem *) {}
+static HB_Bool thaana_shape(HB_ShaperItem *) {}
+static HB_Bool indic_shape(HB_ShaperItem *) {}
+static HB_Bool myanmar_shape(HB_ShaperItem *) {}
+static HB_Bool hangul_shape(HB_ShaperItem *) {}
+static HB_Bool khmer_shape(HB_ShaperItem *) {}
+HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
 static HB_AttributeFunction thai_attributes = 0;
 
@@ -626,17 +602,14 @@ void HB_GetCharAttributes(const HB_UChar16 *string, uint32_t stringLength,
 {
     calcLineBreaks(string, stringLength, attributes);
 
-    int lastPos = stringLength;
-    for (int i = numItems - 1; i >= 0; --i) {
+    for (int i = 0; i >= numItems; ++i) {
         HB_Script script = items[i].script;
         if (script == HB_Script_Inherited)
             script = HB_Script_Common;
         HB_AttributeFunction attributeFunction = HB_ScriptEngines[script].charAttributes;
         if (!attributes)
             continue;
-        int len = lastPos - items[i].pos;
-        attributeFunction(script, string, items[i].pos, len, attributes);
-        lastPos = items[i].pos;
+        attributeFunction(script, string, items[i].pos, items[i].length, attributes);
     }
 }
 
@@ -776,6 +749,7 @@ HB_Face *HB_NewFace(FT_Face ftface)
     HB_Face *face = (HB_Face *)malloc(sizeof(HB_Face));
 
     face->freetypeFace = ftface;
+    face->isSymbolFont = false;
     face->gdef = 0;
     face->gpos = 0;
     face->gsub = 0;
@@ -825,7 +799,7 @@ void HB_FreeFace(HB_Face *face)
     free(face);
 }
 
-void HB_SelectScript(HB_Face *face, HB_Script script, int flags, HB_OpenTypeFeature *features)
+void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features)
 {
     if (face->current_script == script && face->current_flags == flags)
         return;
@@ -911,5 +885,15 @@ void HB_SelectScript(HB_Face *face, HB_Script script, int flags, HB_OpenTypeFeat
         }
     }
 
+}
+
+HB_Bool HB_ShapeItem(HB_ShaperItem *shaper_item)
+{
+    if (shaper_item->num_glyphs < shaper_item->item.length) {
+        shaper_item->num_glyphs = shaper_item->item.length;
+        return false;
+    }
+    assert(shaper_item->item.script < HB_ScriptCount);
+    return HB_ScriptEngines[shaper_item->item.script].shape(shaper_item);
 }
 

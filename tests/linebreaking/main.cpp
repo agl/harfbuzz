@@ -27,6 +27,12 @@ HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch)
 #endif
 }
 
+void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *combiningClass)
+{
+    *category = (HB_CharCategory)QChar::category(ch);
+    *combiningClass = QChar::combiningClass(ch);
+}
+
 static QVector<HB_CharAttributes> getCharAttributes(const QString &str)
 {
     QVector<HB_CharAttributes> attrs(str.length());
