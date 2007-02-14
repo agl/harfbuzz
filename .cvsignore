@@ -1,8 +1,0 @@
-aclocal.m4
-autogen.sh
-autom4te.cache
-config.guess
-config.h.in
-config.sub
-configure
-ltmain.sh
