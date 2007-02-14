@@ -175,6 +175,9 @@ typedef enum
 /* needs to be provided by the application/library */
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch);
 void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *combiningClass);
+HB_CharCategory HB_GetUnicodeCharCategory(HB_UChar32 ch);
+int HB_GetUnicodeCharCombiningClass(HB_UChar32 ch);
+HB_UChar16 HB_GetMirroredChar(HB_UChar16 ch);
 
 typedef struct {
     HB_LineBreakType lineBreakType  :2;
@@ -275,6 +278,7 @@ typedef struct HB_Font_ {
 
 typedef struct {
     const HB_UChar16 *string;
+    uint32_t stringLength;
     HB_ScriptItem item;
     HB_Font *font;
     int shaperFlags; // HB_ShaperFlags

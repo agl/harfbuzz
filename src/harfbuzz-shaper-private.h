@@ -49,8 +49,10 @@ typedef struct {
 
 extern const HB_ScriptEngine hb_scriptEngines[];
 
+extern HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_TibetanShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item);
+extern HB_Bool HB_ArabicShape(HB_ShaperItem *shaper_item);
 
 extern void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 
@@ -67,7 +69,8 @@ typedef struct {
 
 enum { PositioningProperties = 0x80000000 };
 
-void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features);
+HB_Bool HB_SelectScript(HB_ShaperItem *item, const HB_OpenTypeFeature *features);
+
 HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties);
 HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool doLogClusters);
 
@@ -80,6 +83,31 @@ inline bool HB_IsControlChar(HB_UChar16 uc)
             || (uc >= 0x2028 && uc <= 0x202f /* LS, PS, LRE, RLE, PDF, LRO, RLO, NNBSP */)
             || (uc >= 0x206a && uc <= 0x206f /* ISS, ASS, IAFS, AFS, NADS, NODS */);
 }
+
+inline HB_Bool HB_StringToGlyphs(HB_ShaperItem *shaper_item)
+{
+    return shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+                                                    shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
+                                                    shaper_item->glyphs, &shaper_item->num_glyphs,
+                                                    shaper_item->item.bidiLevel % 2);
+}
+
+inline void HB_GetAdvances(HB_ShaperItem *shaper_item)
+{
+    shaper_item->font->klass->getAdvances(shaper_item->font,
+                                          shaper_item->glyphs, shaper_item->num_glyphs,
+                                          shaper_item->advances);
+}
+
+#define HB_STACKARRAY(Type, Name, Length) \
+    Type stack##Name[512]; \
+    Type *Name = stack##Name; \
+    if ((Length) >= 512) \
+        Name = (Type *)malloc((Length) * sizeof(Type));
+
+#define HB_FREE_STACKARRAY(Name) \
+    if (stack##Name != Name) \
+        free(Name);
 
 FT_END_HEADER
 

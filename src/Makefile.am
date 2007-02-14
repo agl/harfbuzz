@@ -18,7 +18,8 @@ MAINSOURCES =  \
 	harfbuzz-myanmar.cpp \
 	harfbuzz-khmer.cpp \
 	harfbuzz-indic.cpp \
-	harfbuzz-hebrew.cpp
+	harfbuzz-hebrew.cpp \
+	harfbuzz-arabic.cpp
 
 EXTRA_SOURCES = harfbuzz.c
 

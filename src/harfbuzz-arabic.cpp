@@ -8,6 +8,31 @@
  *
  ******************************************************************/
 
+#include "harfbuzz-shaper.h"
+#include "harfbuzz-shaper-private.h"
+
+#include <assert.h>
+
+static const HB_UChar16 ReplacementCharacter = 0xfffd;
+
+typedef enum {
+    CcmpProperty = 0x1
+};
+
+typedef struct {
+    unsigned char shape;
+    unsigned char justification;
+} HB_ArabicProperties;
+
+typedef enum {
+    XIsolated,
+    XFinal,
+    XInitial,
+    XMedial,
+    // intermediate state
+    XCausing
+} ArabicShape;
+
 // these groups correspond to the groups defined in the Unicode standard.
 // Some of these groups are equal with regards to both joining and line breaking behaviour,
 // and thus have the same enum value
@@ -206,7 +231,7 @@ static inline ArabicGroup arabicGroup(unsigned short uc)
         return (ArabicGroup) arabic_group[uc-0x600];
     else if (uc == 0x200d)
         return Center;
-    else if (QChar::category(uc) == QChar::Separator_Space)
+    else if (HB_GetUnicodeCharCategory(uc) == HB_Separator_Space)
         return ArabicSpace;
     else
         return ArabicNone;
@@ -218,7 +243,7 @@ static inline ArabicGroup arabicGroup(unsigned short uc)
    arabic).
 
    Each unicode char has a joining class (right, dual (left&right), center (joincausing) or transparent).
-   transparent joining is not encoded in QChar::joining(), but applies to all combining marks and format marks.
+   transparent joining is not encoded in HB_UChar16::joining(), but applies to all combining marks and format marks.
 
    Right join-causing: dual + center
    Left join-causing: dual + right + center
@@ -281,8 +306,8 @@ static const Joining joining_for_group[ArabicGroupsEnd] = {
 
 
 struct JoiningPair {
-    QArabicShape form1;
-    QArabicShape form2;
+    ArabicShape form1;
+    ArabicShape form2;
 };
 
 static const JoiningPair joining_table[5][4] =
@@ -338,7 +363,7 @@ This seems to imply that we have at most one kashida point per arabic word.
 
 */
 
-void qt_getArabicProperties(const unsigned short *chars, int len, QArabicProperties *properties)
+static void getArabicProperties(const unsigned short *chars, int len, HB_ArabicProperties *properties)
 {
 //     qDebug("arabicSyriacOpenTypeShape: properties:");
     int lastPos = 0;
@@ -346,12 +371,12 @@ void qt_getArabicProperties(const unsigned short *chars, int len, QArabicPropert
 
     ArabicGroup group = arabicGroup(chars[0]);
     Joining j = joining_for_group[group];
-    QArabicShape shape = joining_table[XIsolated][j].form2;
-    properties[0].justification = QGlyphLayout::NoJustification;
+    ArabicShape shape = joining_table[XIsolated][j].form2;
+    properties[0].justification = HB_NoJustification;
 
     for (int i = 1; i < len; ++i) {
         // #### fix handling for spaces and punktuation
-        properties[i].justification = QGlyphLayout::NoJustification;
+        properties[i].justification = HB_NoJustification;
 
         group = arabicGroup(chars[i]);
         j = joining_for_group[group];
@@ -367,29 +392,29 @@ void qt_getArabicProperties(const unsigned short *chars, int len, QArabicPropert
         switch(lastGroup) {
         case Seen:
             if (properties[lastPos].shape == XInitial || properties[lastPos].shape == XMedial)
-                properties[i-1].justification = QGlyphLayout::Arabic_Seen;
+                properties[i-1].justification = HB_Arabic_Seen;
             break;
         case Hah:
             if (properties[lastPos].shape == XFinal)
-                properties[lastPos-1].justification = QGlyphLayout::Arabic_HaaDal;
+                properties[lastPos-1].justification = HB_Arabic_HaaDal;
             break;
         case Alef:
             if (properties[lastPos].shape == XFinal)
-                properties[lastPos-1].justification = QGlyphLayout::Arabic_Alef;
+                properties[lastPos-1].justification = HB_Arabic_Alef;
             break;
         case Ain:
             if (properties[lastPos].shape == XFinal)
-                properties[lastPos-1].justification = QGlyphLayout::Arabic_Waw;
+                properties[lastPos-1].justification = HB_Arabic_Waw;
             break;
         case Noon:
             if (properties[lastPos].shape == XFinal)
-                properties[lastPos-1].justification = QGlyphLayout::Arabic_Normal;
+                properties[lastPos-1].justification = HB_Arabic_Normal;
             break;
         case ArabicNone:
             break;
 
         default:
-            Q_ASSERT(false);
+            assert(false);
         }
 
         lastGroup = ArabicNone;
@@ -401,10 +426,10 @@ void qt_getArabicProperties(const unsigned short *chars, int len, QArabicPropert
         case Center:
             break;
         case ArabicSpace:
-            properties[i].justification = QGlyphLayout::Arabic_Space;
+            properties[i].justification = HB_Arabic_Space;
             break;
         case Kashida:
-            properties[i].justification = QGlyphLayout::Arabic_Kashida;
+            properties[i].justification = HB_Arabic_Kashida;
             break;
         case Seen:
             lastGroup = Seen;
@@ -423,7 +448,7 @@ void qt_getArabicProperties(const unsigned short *chars, int len, QArabicPropert
         case Yeh:
         case Reh:
             if (properties[lastPos].shape == XMedial && arabicGroup(chars[lastPos]) == Beh)
-                properties[lastPos-1].justification = QGlyphLayout::Arabic_BaRa;
+                properties[lastPos-1].justification = HB_Arabic_BaRa;
             break;
 
         case Ain:
@@ -437,7 +462,7 @@ void qt_getArabicProperties(const unsigned short *chars, int len, QArabicPropert
             lastGroup = Noon;
             break;
         case ArabicGroupsEnd:
-            Q_ASSERT(false);
+            assert(false);
         }
 
         lastPos = i;
@@ -752,7 +777,7 @@ static const ushort arabicUnicodeLamAlefMapping[6][4] = {
     { 0xfffd, 0xfffd, 0xfefb, 0xfefc }  // 0x627        R       Alef
 };
 
-static inline int getShape(uchar cell, int shape)
+static inline int getShape(uint8_t cell, int shape)
 {
     // the arabicUnicodeMapping does not work for U+0649 ALEF MAKSURA, handle this here
     uint ch = (cell != 0x49)
@@ -765,49 +790,47 @@ static inline int getShape(uchar cell, int shape)
 /*
   Two small helper functions for arabic shaping.
 */
-static inline const QChar prevChar(const QString *str, int pos)
+static inline const HB_UChar16 prevChar(const HB_UChar16 *str, int pos)
 {
     //qDebug("leftChar: pos=%d", pos);
     pos--;
-    const QChar *ch = str->unicode() + pos;
+    const HB_UChar16 *ch = str + pos;
     while(pos > -1) {
-        if(QChar::category(ch->unicode()) != QChar::Mark_NonSpacing)
+        if(HB_GetUnicodeCharCategory(*ch) != HB_Mark_NonSpacing)
             return *ch;
         pos--;
         ch--;
     }
-    return QChar::ReplacementCharacter;
+    return ReplacementCharacter;
 }
 
-static inline const QChar nextChar(const QString *str, int pos)
+static inline const HB_UChar16 nextChar(const HB_UChar16 *str, uint32_t len, int pos)
 {
     pos++;
-    int len = str->length();
-    const QChar *ch = str->unicode() + pos;
+    const HB_UChar16 *ch = str + pos;
     while(pos < len) {
         //qDebug("rightChar: %d isLetter=%d, joining=%d", pos, ch.isLetter(), ch.joining());
-        if(QChar::category(ch->unicode()) != QChar::Mark_NonSpacing)
+        if(HB_GetUnicodeCharCategory(*ch) != HB_Mark_NonSpacing)
             return *ch;
         // assume it's a transparent char, this might not be 100% correct
         pos++;
         ch++;
     }
-    return QChar::ReplacementCharacter;
+    return ReplacementCharacter;
 }
 
-#ifndef Q_WS_MAC
-static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffer, int *shapedLength,
-                         bool reverse, QGlyphLayout *glyphs, unsigned short *logClusters)
+static void shapedString(const HB_UChar16 *uc, uint32_t stringLength, int from, int len, HB_UChar16 *shapeBuffer, int *shapedLength,
+                         bool reverse, HB_GlyphAttributes *attributes, unsigned short *logClusters)
 {
-    Q_ASSERT(uc->length() >= from + len);
+    assert(stringLength >= from + len);
 
     if(len == 0) {
         *shapedLength = 0;
         return;
     }
 
-    QVarLengthArray<QArabicProperties> props(len+2);
-    QArabicProperties *properties = props.data();
+    HB_STACKARRAY(HB_ArabicProperties, props, len + 2)
+    HB_ArabicProperties *properties = props;
     int f = from;
     int l = len;
     if (from > 0) {
@@ -815,32 +838,30 @@ static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffe
         ++l;
         ++properties;
     }
-    if (f + l < uc->length()) {
+    if (f + l < stringLength)
         ++l;
-    }
-    qt_getArabicProperties((const unsigned short *)(uc->unicode()+f), l, props.data());
+    getArabicProperties(uc+f, l, props);
 
-    const QChar *ch = uc->unicode() + from;
-    QChar *data = shapeBuffer;
+    const HB_UChar16 *ch = uc + from;
+    HB_UChar16 *data = shapeBuffer;
     int clusterStart = 0;
 
     for (int i = 0; i < len; i++) {
-        uchar r = ch->row();
+        uint8_t r = *ch >> 8;
         int gpos = data - shapeBuffer;
 
         if (r != 0x06) {
             if (r == 0x20) {
-                uchar c = ch->cell();
-                if (c == 0x0c || c == 0x0d)
+                if (*ch == 0x200c || *ch == 0x200d)
                     // remove ZWJ and ZWNJ
                     goto skip;
             }
             if (reverse)
-                *data = QChar::mirroredChar(ch->unicode());
+                *data = HB_GetMirroredChar(*ch);
             else
                 *data = *ch;
         } else {
-            uchar c = ch->cell();
+            uint8_t c = *ch & 0xff;
             int pos = i + from;
             int shape = properties[i].shape;
 //            qDebug("mapping U+%x to shape %d glyph=0x%x", ch->unicode(), shape, getShape(c, shape));
@@ -848,15 +869,15 @@ static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffe
             ushort map;
             switch (c) {
                 case 0x44: { // lam
-                    const QChar pch = nextChar(uc, pos);
-                    if (pch.row() == 0x06) {
-                        switch (pch.cell()) {
+                    const HB_UChar16 pch = nextChar(uc, stringLength, pos);
+                    if ((pch >> 8) == 0x06) {
+                        switch (pch & 0xff) {
                             case 0x22:
                             case 0x23:
                             case 0x25:
                             case 0x27:
 //                                 qDebug(" lam of lam-alef ligature");
-                                map = arabicUnicodeLamAlefMapping[pch.cell() - 0x22][shape];
+                                map = arabicUnicodeLamAlefMapping[(pch & 0xff) - 0x22][shape];
                                 goto next;
                             default:
                                 break;
@@ -868,7 +889,7 @@ static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffe
                 case 0x23: // alef with hamza above
                 case 0x25: // alef with hamza below
                 case 0x27: // alef
-                    if (prevChar(uc, pos).unicode() == 0x0644) {
+                    if (prevChar(uc, pos) == 0x0644) {
                         // have a lam alef ligature
                         //qDebug(" alef of lam-alef ligature");
                         goto skip;
@@ -882,16 +903,16 @@ static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffe
         }
         // ##### Fixme
         //glyphs[gpos].attributes.zeroWidth = zeroWidth;
-        if (QChar::category(ch->unicode()) == QChar::Mark_NonSpacing) {
-            glyphs[gpos].attributes.mark = true;
+        if (HB_GetUnicodeCharCategory(*ch) == HB_Mark_NonSpacing) {
+            attributes[gpos].mark = true;
 //             qDebug("glyph %d (char %d) is mark!", gpos, i);
         } else {
-            glyphs[gpos].attributes.mark = false;
+            attributes[gpos].mark = false;
             clusterStart = data - shapeBuffer;
         }
-        glyphs[gpos].attributes.clusterStart = !glyphs[gpos].attributes.mark;
-        glyphs[gpos].attributes.combiningClass = QChar::combiningClass(ch->unicode());
-        glyphs[gpos].attributes.justification = properties[i].justification;
+        attributes[gpos].clusterStart = !attributes[gpos].mark;
+        attributes[gpos].combiningClass = HB_GetUnicodeCharCombiningClass(*ch);
+        attributes[gpos].justification = properties[i].justification;
 //         qDebug("data[%d] = %x (from %x)", gpos, (uint)data->unicode(), ch->unicode());
         data++;
     skip:
@@ -899,10 +920,11 @@ static void shapedString(const QString *uc, int from, int len, QChar *shapeBuffe
         logClusters[i] = clusterStart;
     }
     *shapedLength = data - shapeBuffer;
-}
-#endif
 
-#ifndef QT_NO_OPENTYPE
+    HB_FREE_STACKARRAY(props);
+}
+
+#ifndef NO_OPENTYPE
 
 enum {
     InitProperty = 0x2,
@@ -917,7 +939,7 @@ enum {
     MsetProperty = 0x400
 };
 
-static const QOpenType::Features arabic_features[] = {
+static const HB_OpenTypeFeature arabic_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('i', 's', 'o', 'l'), IsolProperty },
     { FT_MAKE_TAG('f', 'i', 'n', 'a'), FinaProperty },
@@ -933,7 +955,7 @@ static const QOpenType::Features arabic_features[] = {
     {0, 0}
 };
 
-static const QOpenType::Features syriac_features[] = {
+static const HB_OpenTypeFeature syriac_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('i', 's', 'o', 'l'), IsolProperty },
     { FT_MAKE_TAG('f', 'i', 'n', 'a'), FinaProperty },
@@ -949,33 +971,32 @@ static const QOpenType::Features syriac_features[] = {
     {0, 0}
 };
 
-static bool arabicSyriacOpenTypeShape(QOpenType *openType, QShaperItem *item, bool *ot_ok)
+static bool arabicSyriacOpenTypeShape(HB_ShaperItem *item, bool *ot_ok)
 {
     *ot_ok = true;
 
-    openType->selectScript(item, item->script, item->script == QUnicodeTables::Arabic ? arabic_features : syriac_features);
     const int nglyphs = item->num_glyphs;
-    if (!item->font->stringToCMap(item->string->unicode()+item->from, item->length, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    if (!HB_StringToGlyphs(item))
         return false;
-    heuristicSetGlyphAttributes(item);
+    HB_HeuristicSetGlyphAttributes(item);
 
-    const unsigned short *uc = (const unsigned short *)item->string->unicode() + item->from;
+    const HB_UChar16 *uc = item->string + item->item.pos;
 
-    QVarLengthArray<QArabicProperties> props(item->length+2);
-    QArabicProperties *properties = props.data();
+    HB_STACKARRAY(HB_ArabicProperties, props, item->item.length + 2);
+    HB_ArabicProperties *properties = props;
     int f = 0;
-    int l = item->length;
-    if (item->from > 0) {
+    int l = item->item.length;
+    if (item->item.pos > 0) {
         --f;
         ++l;
         ++properties;
     }
-    if (f + l < item->string->length()) {
+    if (f + l < item->stringLength) {
         ++l;
     }
-    qt_getArabicProperties((const unsigned short *)(uc+f), l, props.data());
+    getArabicProperties(uc+f, l, props);
 
-    QVarLengthArray<uint> apply(item->num_glyphs);
+    HB_STACKARRAY(uint, apply, item->num_glyphs);
 
     for (int i = 0; i < item->num_glyphs; i++) {
         apply[i] = 0;
@@ -990,27 +1011,31 @@ static bool arabicSyriacOpenTypeShape(QOpenType *openType, QShaperItem *item, bo
             apply[i] |= IsolProperty|MediProperty|FinaProperty;
     }
 
-    if (!openType->shape(item, apply.data())) {
+    HB_FREE_STACKARRAY(props);
+
+    bool shaped = HB_OpenTypeShape(item, apply);
+
+    HB_FREE_STACKARRAY(apply);
+
+    if (!shaped) {
         *ot_ok = false;
         return false;
     }
-    return openType->positionAndAdd(item, nglyphs);
+    return HB_OpenTypePosition(item, nglyphs, /*doLogClusters*/true);
 }
 
 #endif
 
-#ifndef Q_WS_MAC
 // #### stil missing: identify invalid character combinations
-static bool arabic_shape(QShaperItem *item)
+HB_Bool HB_ArabicShape(HB_ShaperItem *item)
 {
-    Q_ASSERT(item->script == QUnicodeTables::Arabic);
+    assert(item->item.script == HB_Script_Arabic || item->item.script == HB_Script_Syriac);
 
-#ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
+#ifndef NO_OPENTYPE
 
-    if (openType && openType->supportsScript(QUnicodeTables::Arabic)) {
+    if (HB_SelectScript(item, item->item.script == HB_Script_Arabic ? arabic_features : syriac_features)) {
         bool ot_ok;
-        if (arabicSyriacOpenTypeShape(openType, item, &ot_ok))
+        if (arabicSyriacOpenTypeShape(item, &ot_ok))
             return true;
         if (ot_ok)
             return false;
@@ -1018,49 +1043,28 @@ static bool arabic_shape(QShaperItem *item)
     }
 #endif
 
-    QVarLengthArray<ushort> shapedChars(item->length);
+    if (item->item.script == HB_Script_Syriac)
+        return HB_BasicShape(item);
+
+    HB_STACKARRAY(HB_UChar16, shapedChars, item->item.length);
 
     int slen;
-    shapedString(item->string, item->from, item->length, (QChar *)shapedChars.data(), &slen,
-                  item->flags & QTextEngine::RightToLeft,
-                  item->glyphs, item->log_clusters);
+    shapedString(item->string, item->stringLength, item->item.pos, item->item.length, shapedChars, &slen,
+                  item->item.bidiLevel % 2,
+                  item->attributes, item->log_clusters);
 
-    if (!item->font->stringToCMap((QChar *)shapedChars.data(), slen, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    HB_Bool haveGlyphs = item->font->klass->stringToGlyphs(item->font,
+                                                           shapedChars, slen,
+                                                           item->glyphs, &item->num_glyphs,
+                                                           item->item.bidiLevel % 2);
+
+    HB_FREE_STACKARRAY(shapedChars);
+
+    if (!haveGlyphs)
         return false;
 
-    for (int i = 0; i < slen; ++i)
-        if (item->glyphs[i].attributes.mark)
-            item->glyphs[i].advance = QFixedPoint();
-    qt_heuristicPosition(item);
+    HB_HeuristicPosition(item);
     return true;
 }
-#endif
-
-// ------------------------------------------------------------------------------------------------------------------
-//
-// Continuation of middle eastern languages
-//
-// ------------------------------------------------------------------------------------------------------------------
-
-#if defined(Q_WS_X11) || defined(Q_WS_QWS)
-// #### stil missing: identify invalid character combinations
-static bool syriac_shape(QShaperItem *item)
-{
-    Q_ASSERT(item->script == QUnicodeTables::Syriac);
-
-#ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (openType && openType->supportsScript(QUnicodeTables::Syriac)) {
-        bool ot_ok;
-        if (arabicSyriacOpenTypeShape(openType, item, &ot_ok))
-            return true;
-        if (ot_ok)
-            return false;
-            // fall through to the non OT code
-    }
-#endif
-    return basic_shape(item);
-}
-
 
 

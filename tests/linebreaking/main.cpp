@@ -33,6 +33,21 @@ void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *
     *combiningClass = QChar::combiningClass(ch);
 }
 
+HB_CharCategory HB_GetUnicodeCharCategory(HB_UChar32 ch)
+{
+    return (HB_CharCategory)QChar::category(ch);
+}
+
+int HB_GetUnicodeCharCombiningClass(HB_UChar32 ch)
+{
+    return QChar::combiningClass(ch);
+}
+
+HB_UChar16 HB_GetMirroredChar(HB_UChar16 ch)
+{
+    return QChar::mirroredChar(ch);
+}
+
 static QVector<HB_CharAttributes> getCharAttributes(const QString &str)
 {
     QVector<HB_CharAttributes> attrs(str.length());

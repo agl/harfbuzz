@@ -36,14 +36,10 @@ HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
 
 
 #ifndef NO_OPENTYPE
-    if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
-        HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, hebrew_features);
+    if (HB_SelectScript(shaper_item, hebrew_features)) {
 
         const int availableGlyphs = shaper_item->num_glyphs;
-        if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
-                                                      shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
-                                                      shaper_item->glyphs, &shaper_item->num_glyphs,
-                                                      shaper_item->item.bidiLevel % 2))
+        if (!HB_StringToGlyphs(shaper_item))
             return false;
 
 
@@ -62,8 +58,7 @@ HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
         Holam = 0x5b9,
         Rafe = 0x5bf
     };
-    HB_UChar16 chars[512];
-    HB_UChar16 *shapedChars = shaper_item->item.length > 256 ? (HB_UChar16 *)::malloc(2*shaper_item->item.length * sizeof(HB_UChar16)) : chars;
+    HB_STACKARRAY(HB_UChar16, shapedChars, 2 * shaper_item->item.length);
 
     const HB_UChar16 *uc = shaper_item->string + shaper_item->item.pos;
     unsigned short *logClusters = shaper_item->log_clusters;
@@ -158,23 +153,18 @@ HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
         logClusters[i] = cluster_start;
     }
 
-    if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+    HB_Bool haveGlyphs = shaper_item->font->klass->stringToGlyphs(shaper_item->font,
                                                   shapedChars, slen,
                                                   shaper_item->glyphs, &shaper_item->num_glyphs,
-                                                  shaper_item->item.bidiLevel % 2)) {
-        if (shaper_item->item.length > 256)
-            ::free(shapedChars);
+                                                  shaper_item->item.bidiLevel % 2);
+
+    HB_FREE_STACKARRAY(shapedChars);
+
+    if (!haveGlyphs)
         return false;
-    }
-    for (int i = 0; i < shaper_item->num_glyphs; ++i) {
-        if (shaper_item->attributes[i].mark) {
-            shaper_item->advances[i] = 0;
-        }
-    }
+
     HB_HeuristicPosition(shaper_item);
 
-    if (shaper_item->item.length > 256)
-        ::free(shapedChars);
     return true;
 }
 

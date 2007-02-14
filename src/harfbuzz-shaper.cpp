@@ -350,6 +350,7 @@ static inline void positionCluster(HB_ShaperItem *item, int gfrom,  int glast)
 
 void HB_HeuristicPosition(HB_ShaperItem *item)
 {
+    HB_GetAdvances(item);
     HB_GlyphAttributes *attributes = item->attributes;
 
     int cEnd = -1;
@@ -491,24 +492,19 @@ static const HB_OpenTypeFeature basic_features[] = {
 };
 #endif
 
-static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
+HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
 {
 #ifndef NO_OPENTYPE
     const int availableGlyphs = shaper_item->num_glyphs;
 #endif
 
-    if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
-                                           shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
-                                           shaper_item->glyphs, &shaper_item->num_glyphs,
-                                           shaper_item->item.bidiLevel % 2))
+    if (!HB_StringToGlyphs(shaper_item))
         return false;
 
     HB_HeuristicSetGlyphAttributes(shaper_item);
 
 #ifndef NO_OPENTYPE
-    if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
-        HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, basic_features);
-
+    if (HB_SelectScript(shaper_item, basic_features)) {
         HB_OpenTypeShape(shaper_item, /*properties*/0);
         return HB_OpenTypePosition(shaper_item, availableGlyphs, /*doLogClusters*/true);
     }
@@ -518,8 +514,6 @@ static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
     return true;
 }
 
-static HB_Bool arabic_shape(HB_ShaperItem *) {}
-static HB_Bool syriac_shape(HB_ShaperItem *) {}
 static HB_Bool thaana_shape(HB_ShaperItem *) {}
 static HB_Bool indic_shape(HB_ShaperItem *) {}
 static HB_Bool myanmar_shape(HB_ShaperItem *) {}
@@ -531,19 +525,19 @@ static HB_AttributeFunction thai_attributes = 0;
 
 const HB_ScriptEngine HB_ScriptEngines[] = {
     // Common
-    { basic_shape, 0},
+    { HB_BasicShape, 0},
     // Greek
-    { basic_shape, 0},
+    { HB_BasicShape, 0},
     // Cyrillic
-    { basic_shape, 0},
+    { HB_BasicShape, 0},
     // Armenian
-    { basic_shape, 0},
+    { HB_BasicShape, 0},
     // Hebrew
     { HB_HebrewShape, 0 },
     // Arabic
-    { arabic_shape, 0},
+    { HB_ArabicShape, 0},
     // Syriac
-    { syriac_shape, 0},
+    { HB_ArabicShape, 0},
     // Thaana
     { thaana_shape, 0 },
     // Devanagari
@@ -567,21 +561,21 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Sinhala
     { indic_shape, HB_IndicAttributes },
     // Thai
-    { basic_shape, thai_attributes },
+    { HB_BasicShape, thai_attributes },
     // Lao
-    { basic_shape, 0 },
+    { HB_BasicShape, 0 },
     // Tibetan
     { HB_TibetanShape, HB_TibetanAttributes },
     // Myanmar
     { myanmar_shape, HB_MyanmarAttributes },
     // Georgian
-    { basic_shape, 0 },
+    { HB_BasicShape, 0 },
     // Hangul
     { hangul_shape, 0 },
     // Ogham
-    { basic_shape, 0 },
+    { HB_BasicShape, 0 },
     // Runic
-    { basic_shape, 0 },
+    { HB_BasicShape, 0 },
     // Khmer
     { khmer_shape, HB_KhmerAttributes }
 };
@@ -796,13 +790,19 @@ void HB_FreeFace(HB_Face *face)
     free(face);
 }
 
-void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features)
+HB_Bool HB_SelectScript(HB_ShaperItem *shaper_item, const HB_OpenTypeFeature *features)
 {
-    if (face->current_script == script && face->current_flags == flags)
-        return;
+    HB_Script script = shaper_item->item.script;
+
+    if (!shaper_item->font->face.supported_scripts[script])
+        return false;
+
+    HB_Face *face = &shaper_item->font->face;
+    if (face->current_script == script && face->current_flags == shaper_item->shaperFlags)
+        return true;
 
     face->current_script = script;
-    face->current_flags = flags;
+    face->current_flags = shaper_item->shaperFlags;
 
     assert(script < HB_ScriptCount);
     // find script in our list of supported scripts.
@@ -882,6 +882,7 @@ void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTy
         }
     }
 
+    return true;
 }
 
 HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties)
@@ -988,10 +989,10 @@ HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool do
 
     // calulate the advances for the shaped glyphs
 //     DEBUG("unpositioned: ");
-    item->font->klass->getAdvances(item->font, item->glyphs, item->num_glyphs, item->advances);
 
     // positioning code:
     if (glyphs_positioned) {
+        HB_GetAdvances(item);
         HB_Position positions = face->buffer->positions;
         HB_Fixed *advances = item->advances;
 
