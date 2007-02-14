@@ -510,7 +510,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
     return true;
 }
 
-static HB_Bool thaana_shape(HB_ShaperItem *) {}
 static HB_Bool indic_shape(HB_ShaperItem *) {}
 HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
@@ -532,7 +531,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Syriac
     { HB_ArabicShape, 0},
     // Thaana
-    { thaana_shape, 0 },
+    { HB_BasicShape, 0 },
     // Devanagari
     { indic_shape, HB_IndicAttributes },
     // Bengali
