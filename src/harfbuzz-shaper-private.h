@@ -67,6 +67,8 @@ typedef struct {
 enum { PositioningProperties = 0x80000000 };
 
 void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features);
+HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties);
+HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool doLogClusters);
 
 FT_END_HEADER
 

@@ -507,7 +507,7 @@ static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
     if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
                                            shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
                                            shaper_item->glyphs, &shaper_item->num_glyphs,
-                                           shaper_item->item.bidiLevel % 2 ? HB_RightToLeft : HB_LeftToRight))
+                                           shaper_item->item.bidiLevel % 2))
         return false;
 
     heuristicSetGlyphAttributes(shaper_item);
@@ -516,10 +516,8 @@ static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
     if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
         HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, basic_features);
 
-#if 0
-        openType->shape(item);
-        return openType->positionAndAdd(item, availableGlyphs);
-#endif
+        HB_OpenTypeShape(shaper_item, /*properties*/0);
+        HB_OpenTypePosition(shaper_item, availableGlyphs, /*doLogClusters*/true);
     }
 #endif
 
@@ -756,6 +754,9 @@ HB_Face *HB_NewFace(FT_Face ftface)
     face->current_script = HB_ScriptCount;
     face->current_flags = HB_ShaperFlag_Default;
     face->has_opentype_kerning = false;
+    face->tmpAttributes = 0;
+    face->tmpLogClusters = 0;
+    face->glyphs_substituted = false;
 
     FT_Error error;
     if ((error = HB_Load_GDEF_Table(ftface, &face->gdef))) {
@@ -796,6 +797,10 @@ void HB_FreeFace(HB_Face *face)
         HB_Done_GDEF_Table(face->gdef);
     if (face->buffer)
         hb_buffer_free(face->buffer);
+    if (face->tmpAttributes)
+        free(face->tmpAttributes);
+    if (face->tmpLogClusters)
+        free(face->tmpLogClusters);
     free(face);
 }
 
@@ -885,6 +890,180 @@ void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTy
         }
     }
 
+}
+
+HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties)
+{
+
+    HB_Face *face = &item->font->face;
+
+    face->length = item->num_glyphs;
+
+    hb_buffer_clear(face->buffer);
+
+    face->tmpAttributes = (HB_GlyphAttributes *) realloc(face->tmpAttributes, face->length*sizeof(HB_GlyphAttributes));
+    face->tmpLogClusters = (unsigned int *) realloc(face->tmpLogClusters, face->length*sizeof(unsigned int));
+    for (int i = 0; i < face->length; ++i) {
+        hb_buffer_add_glyph(face->buffer, item->glyphs[i], properties ? properties[i] : 0, i);
+        face->tmpAttributes[i] = item->attributes[i];
+        face->tmpLogClusters[i] = item->log_clusters[i];
+    }
+
+#ifdef OT_DEBUG
+    DEBUG("-----------------------------------------");
+//     DEBUG("log clusters before shaping:");
+//     for (int j = 0; j < length; j++)
+//         DEBUG("    log[%d] = %d", j, item->log_clusters[j]);
+    DEBUG("original glyphs: %p", item->glyphs);
+    for (int i = 0; i < length; ++i)
+        DEBUG("   glyph=%4x", hb_buffer->in_string[i].gindex);
+//     dump_string(hb_buffer);
+#endif
+
+    face->glyphs_substituted = false;
+    if (face->gsub) {
+        uint error = HB_GSUB_Apply_String(face->gsub, face->buffer);
+        if (error && error != HB_Err_Not_Covered)
+            return false;
+        face->glyphs_substituted = (error != HB_Err_Not_Covered);
+    }
+
+#ifdef OT_DEBUG
+//     DEBUG("log clusters before shaping:");
+//     for (int j = 0; j < length; j++)
+//         DEBUG("    log[%d] = %d", j, item->log_clusters[j]);
+    DEBUG("shaped glyphs:");
+    for (int i = 0; i < length; ++i)
+        DEBUG("   glyph=%4x", hb_buffer->in_string[i].gindex);
+    DEBUG("-----------------------------------------");
+//     dump_string(hb_buffer);
+#endif
+
+    return true;
+}
+
+HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool doLogClusters)
+{
+    HB_Face *face = &item->font->face;
+
+    bool glyphs_positioned = false;
+    if (face->gpos) {
+        memset(face->buffer->positions, 0, face->buffer->in_length*sizeof(HB_PositionRec));
+        int loadFlags = face->current_flags & HB_ShaperFlag_UseDesignMetrics ? FT_LOAD_NO_HINTING : FT_LOAD_DEFAULT;
+        // #### check that passing "false,false" is correct
+        glyphs_positioned = HB_GPOS_Apply_String(face->freetypeFace, face->gpos, loadFlags, face->buffer, false, false) != HB_Err_Not_Covered;
+    }
+
+    if (!face->glyphs_substituted && !glyphs_positioned)
+        return true; // nothing to do for us
+
+    // make sure we have enough space to write everything back
+    if (availableGlyphs < (int)face->buffer->in_length) {
+        item->num_glyphs = face->buffer->in_length;
+        return false;
+    }
+
+    HB_Glyph *glyphs = item->glyphs;
+    HB_GlyphAttributes *attributes = item->attributes;
+
+    for (unsigned int i = 0; i < face->buffer->in_length; ++i) {
+        glyphs[i] = face->buffer->in_string[i].gindex;
+        attributes[i] = face->tmpAttributes[face->buffer->in_string[i].cluster];
+        if (i && face->buffer->in_string[i].cluster == face->buffer->in_string[i-1].cluster)
+            attributes[i].clusterStart = false;
+    }
+    item->num_glyphs = face->buffer->in_length;
+
+    if (doLogClusters) {
+        // we can't do this for indic, as we pass the stuf in syllables and it's easier to do it in the shaper.
+        unsigned short *logClusters = item->log_clusters;
+        int clusterStart = 0;
+        int oldCi = 0;
+        for (unsigned int i = 0; i < face->buffer->in_length; ++i) {
+            int ci = face->buffer->in_string[i].cluster;
+            //         DEBUG("   ci[%d] = %d mark=%d, cmb=%d, cs=%d",
+            //                i, ci, glyphAttributes[i].mark, glyphAttributes[i].combiningClass, glyphAttributes[i].clusterStart);
+            if (!attributes[i].mark && attributes[i].clusterStart && ci != oldCi) {
+                for (int j = oldCi; j < ci; j++)
+                    logClusters[j] = clusterStart;
+                clusterStart = i;
+                oldCi = ci;
+            }
+        }
+        for (int j = oldCi; j < face->length; j++)
+            logClusters[j] = clusterStart;
+    }
+
+    // calulate the advances for the shaped glyphs
+//     DEBUG("unpositioned: ");
+    item->font->klass->getAdvances(item->font, item->glyphs, item->num_glyphs, item->advances);
+
+    // positioning code:
+    if (glyphs_positioned) {
+        HB_Position positions = face->buffer->positions;
+        HB_Fixed *advances = item->advances;
+
+//         DEBUG("positioned glyphs:");
+        for (unsigned int i = 0; i < face->buffer->in_length; i++) {
+//             DEBUG("    %d:\t orig advance: (%d/%d)\tadv=(%d/%d)\tpos=(%d/%d)\tback=%d\tnew_advance=%d", i,
+//                    glyphs[i].advance.x.toInt(), glyphs[i].advance.y.toInt(),
+//                    (int)(positions[i].x_advance >> 6), (int)(positions[i].y_advance >> 6),
+//                    (int)(positions[i].x_pos >> 6), (int)(positions[i].y_pos >> 6),
+//                    positions[i].back, positions[i].new_advance);
+            // ###### fix the case where we have y advances. How do we handle this in Uniscribe?????
+            if (positions[i].new_advance) {
+                advances[i] = item->item.bidiLevel % 2 ? -positions[i].x_advance : positions[i].x_advance;
+            } else {
+                advances[i] += item->item.bidiLevel % 2 ? -positions[i].x_advance : positions[i].x_advance;
+            }
+
+            int back = 0;
+            HB_FixedPoint *offsets = item->offsets;
+            offsets[i].x = positions[i].x_pos;
+            offsets[i].y = positions[i].y_pos;
+            while (positions[i - back].back) {
+                back += positions[i - back].back;
+                offsets[i].x += positions[i - back].x_pos;
+                offsets[i].y += positions[i - back].y_pos;
+            }
+            offsets[i].y = -offsets[i].y;
+
+            if (item->item.bidiLevel % 2) {
+                // ### may need to go back multiple glyphs like in ltr
+                back = positions[i].back;
+                while (back--)
+                    offsets[i].x -= advances[i-back];
+            } else {
+                back = 0;
+                while (positions[i - back].back) {
+                    back += positions[i - back].back;
+                    offsets[i].x -= advances[i-back];
+                }
+            }
+//             DEBUG("   ->\tadv=%d\tpos=(%d/%d)",
+//                    glyphs[i].advance.x.toInt(), glyphs[i].offset.x.toInt(), glyphs[i].offset.y.toInt());
+        }
+        item->kerning_applied = face->has_opentype_kerning;
+    } else {
+        heuristicPosition(item);
+    }
+
+#ifdef OT_DEBUG
+    if (doLogClusters) {
+        DEBUG("log clusters after shaping:");
+        for (int j = 0; j < length; j++)
+            DEBUG("    log[%d] = %d", j, item->log_clusters[j]);
+    }
+    DEBUG("final glyphs:");
+    for (int i = 0; i < (int)hb_buffer->in_length; ++i)
+        DEBUG("   glyph=%4x char_index=%d mark: %d cmp: %d, clusterStart: %d advance=%d/%d offset=%d/%d",
+               glyphs[i].glyph, hb_buffer->in_string[i].cluster, glyphs[i].attributes.mark,
+               glyphs[i].attributes.combiningClass, glyphs[i].attributes.clusterStart,
+               glyphs[i].advance.x.toInt(), glyphs[i].advance.y.toInt(),
+               glyphs[i].offset.x.toInt(), glyphs[i].offset.y.toInt());
+    DEBUG("-----------------------------------------");
+#endif
+    return true;
 }
 
 HB_Bool HB_ShapeItem(HB_ShaperItem *shaper_item)

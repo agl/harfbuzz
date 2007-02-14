@@ -206,42 +206,9 @@ typedef enum {
 
 typedef enum {
     HB_ShaperFlag_Default = 0,
-    HB_ShaperFlag_NoKerning = 1
+    HB_ShaperFlag_NoKerning = 1,
+    HB_ShaperFlag_UseDesignMetrics = 2
 } HB_ShaperFlag;
-
-typedef struct {
-    FT_Face freetypeFace;
-    HB_Bool isSymbolFont;
-
-    HB_GDEF gdef;
-    HB_GSUB gsub;
-    HB_GPOS gpos;
-    HB_Bool supported_scripts[HB_ScriptCount];
-    HB_Buffer buffer;
-    HB_Script current_script;
-    int current_flags;
-    HB_Bool has_opentype_kerning;
-#if 0
-    HB_Bool positioned;
-    HB_Bool glyphs_substituted;
-    QGlyphLayout::Attributes *tmpAttributes;
-    unsigned int *tmpLogClusters;
-#endif
-    int length;
-    int orig_nglyphs;
-} HB_Face;
-
-typedef struct HB_Font_ HB_Font;
-
-typedef struct {
-    HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, uint32_t flags);
-    void    (*getAdvances)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
-} HB_FontClass;
-
-typedef struct HB_Font_ {
-    HB_FontClass *klass;
-    HB_Face face;
-} HB_Font;
 
 // highest value means highest priority for justification. Justification is done by first inserting kashidas
 // starting with the highest priority positions, then stretching spaces, afterwards extending inter char
@@ -269,6 +236,41 @@ typedef struct {
     unsigned short dontPrint       :1;
     unsigned short combiningClass  :8;
 } HB_GlyphAttributes;
+
+
+typedef struct {
+    FT_Face freetypeFace;
+    HB_Bool isSymbolFont;
+
+    HB_GDEF gdef;
+    HB_GSUB gsub;
+    HB_GPOS gpos;
+    HB_Bool supported_scripts[HB_ScriptCount];
+    HB_Buffer buffer;
+    HB_Script current_script;
+    int current_flags; // HB_ShaperFlags
+    HB_Bool has_opentype_kerning;
+#if 0
+    HB_Bool positioned;
+#endif
+    HB_Bool glyphs_substituted;
+    HB_GlyphAttributes *tmpAttributes;
+    unsigned int *tmpLogClusters;
+    int length;
+    int orig_nglyphs;
+} HB_Face;
+
+typedef struct HB_Font_ HB_Font;
+
+typedef struct {
+    HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, HB_Bool rightToLeft);
+    void    (*getAdvances)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
+} HB_FontClass;
+
+typedef struct HB_Font_ {
+    HB_FontClass *klass;
+    HB_Face face;
+} HB_Font;
 
 typedef struct {
     const HB_UChar16 *string;
