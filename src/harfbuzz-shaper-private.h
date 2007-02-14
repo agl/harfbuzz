@@ -37,6 +37,19 @@ typedef enum
     HB_Combining_IotaSubscript           = 240
 } HB_CombiningClass;
 
+typedef enum {
+    CcmpProperty = 0x1,
+    InitProperty = 0x2,
+    IsolProperty = 0x4,
+    FinaProperty = 0x8,
+    MediProperty = 0x10,
+    RligProperty = 0x20,
+    CaltProperty = 0x40,
+    LigaProperty = 0x80,
+    DligProperty = 0x100,
+    CswhProperty = 0x200,
+    MsetProperty = 0x400
+} HB_OpenTypeProperty;
 
 // return true if ok.
 typedef HB_Bool (*HB_ShapeFunction)(HB_ShaperItem *shaper_item);
@@ -53,6 +66,7 @@ extern HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_TibetanShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_ArabicShape(HB_ShaperItem *shaper_item);
+extern HB_Bool HB_HangulShape(HB_ShaperItem *shaper_item);
 
 extern void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 

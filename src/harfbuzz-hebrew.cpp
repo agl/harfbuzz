@@ -12,10 +12,6 @@
 #include "harfbuzz-shaper-private.h"
 #include <assert.h>
 
-typedef enum {
-    CcmpProperty = 0x1
-};
-
 // Uniscribe also defines dlig for Hebrew, but we leave this out for now, as it's mostly
 // ligatures one does not want in modern Hebrew (as lam-alef ligatures).
 #ifndef NO_OPENTYPE

@@ -479,10 +479,6 @@ void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item)
         attributes[pos].justification = HB_Character;
 }
 
-typedef enum {
-    CcmpProperty = 0x1
-};
-
 #ifndef NO_OPENTYPE
 static const HB_OpenTypeFeature basic_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
@@ -517,7 +513,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
 static HB_Bool thaana_shape(HB_ShaperItem *) {}
 static HB_Bool indic_shape(HB_ShaperItem *) {}
 static HB_Bool myanmar_shape(HB_ShaperItem *) {}
-static HB_Bool hangul_shape(HB_ShaperItem *) {}
 static HB_Bool khmer_shape(HB_ShaperItem *) {}
 HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
@@ -571,7 +566,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Georgian
     { HB_BasicShape, 0 },
     // Hangul
-    { hangul_shape, 0 },
+    { HB_HangulShape, 0 },
     // Ogham
     { HB_BasicShape, 0 },
     // Runic

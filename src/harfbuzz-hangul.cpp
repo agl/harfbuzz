@@ -8,7 +8,10 @@
  *
  ******************************************************************/
 
-#if 0
+#include "harfbuzz-shaper.h"
+#include "harfbuzz-shaper-private.h"
+
+#include <assert.h>
 
 // Hangul is a syllable based script. Unicode reserves a large range
 // for precomposed hangul, where syllables are already precomposed to
@@ -73,15 +76,15 @@ static inline HangulType hangul_type(unsigned short uc) {
     return T;
 }
 
-static int hangul_nextSyllableBoundary(const QString &s, int start, int end)
+static int hangul_nextSyllableBoundary(const HB_UChar16 *s, int start, int end)
 {
-    const QChar *uc = s.unicode() + start;
+    const HB_UChar16 *uc = s + start;
 
-    HangulType state = hangul_type(uc->unicode());
+    HangulType state = hangul_type(*uc);
     int pos = 1;
 
     while (pos < end - start) {
-        HangulType newState = hangul_type(uc[pos].unicode());
+        HangulType newState = hangul_type(uc[pos]);
         switch(newState) {
         case X:
             goto finish;
@@ -109,8 +112,8 @@ static int hangul_nextSyllableBoundary(const QString &s, int start, int end)
     return start+pos;
 }
 
-#ifndef QT_NO_OPENTYPE
-static const QOpenType::Features hangul_features [] = {
+#ifndef NO_OPENTYPE
+static const HB_OpenTypeFeature hangul_features [] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('l', 'j', 'm', 'o'), CcmpProperty },
     { FT_MAKE_TAG('j', 'j', 'm', 'o'), CcmpProperty },
@@ -119,25 +122,23 @@ static const QOpenType::Features hangul_features [] = {
 };
 #endif
 
-#if defined(Q_WS_X11) || defined(Q_WS_QWS)
-static bool hangul_shape_syllable(QOpenType *openType, QShaperItem *item)
+static bool hangul_shape_syllable(HB_ShaperItem *item, HB_Bool openType)
 {
-    Q_UNUSED(openType)
-    const QChar *ch = item->string->unicode() + item->from;
+    const HB_UChar16 *ch = item->string + item->item.pos;
 
     int i;
-    unsigned short composed = 0;
+    HB_UChar16 composed = 0;
     // see if we can compose the syllable into a modern hangul
-    if (item->length == 2) {
-        int LIndex = ch[0].unicode() - Hangul_LBase;
-        int VIndex = ch[1].unicode() - Hangul_VBase;
+    if (item->item.length == 2) {
+        int LIndex = ch[0] - Hangul_LBase;
+        int VIndex = ch[1] - Hangul_VBase;
         if (LIndex >= 0 && LIndex < Hangul_LCount &&
             VIndex >= 0 && VIndex < Hangul_VCount)
             composed = (LIndex * Hangul_VCount + VIndex) * Hangul_TCount + Hangul_SBase;
-    } else if (item->length == 3) {
-        int LIndex = ch[0].unicode() - Hangul_LBase;
-        int VIndex = ch[1].unicode() - Hangul_VBase;
-        int TIndex = ch[2].unicode() - Hangul_TBase;
+    } else if (item->item.length == 3) {
+        int LIndex = ch[0] - Hangul_LBase;
+        int VIndex = ch[1] - Hangul_VBase;
+        int TIndex = ch[2] - Hangul_TBase;
         if (LIndex >= 0 && LIndex < Hangul_LCount &&
             VIndex >= 0 && VIndex < Hangul_VCount &&
             TIndex >= 0 && TIndex < Hangul_TCount)
@@ -145,93 +146,95 @@ static bool hangul_shape_syllable(QOpenType *openType, QShaperItem *item)
     }
 
 
-    int len = item->length;
-    QChar c(composed);
+    int len = item->item.length;
 
     // if we have a modern hangul use the composed form
     if (composed) {
-        // chars = &c;
+        ch = &composed;
         len = 1;
     }
 
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->stringToCMap(ch, len, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    if (!item->font->klass->stringToGlyphs(item->font,
+                                           ch, len,
+                                           item->glyphs, &item->num_glyphs,
+                                           item->item.bidiLevel % 2))
         return false;
     for (i = 0; i < len; i++) {
-        item->glyphs[i].attributes.mark = false;
-        item->glyphs[i].attributes.clusterStart = false;
-        item->glyphs[i].attributes.justification = 0;
-        item->glyphs[i].attributes.zeroWidth = false;
-        IDEBUG("    %d: %4x", i, ch[i].unicode());
+        item->attributes[i].mark = false;
+        item->attributes[i].clusterStart = false;
+        item->attributes[i].justification = 0;
+        item->attributes[i].zeroWidth = false;
+        //IDEBUG("    %d: %4x", i, ch[i].unicode());
     }
 
-#ifndef QT_NO_OPENTYPE
-    if (openType && !composed) {
+#ifndef NO_OPENTYPE
+    if (!composed && openType) {
 
-        QVarLengthArray<unsigned short> logClusters(len);
+        HB_STACKARRAY(unsigned short, logClusters, len);
         for (i = 0; i < len; ++i)
             logClusters[i] = i;
-        item->log_clusters = logClusters.data();
+        item->log_clusters = logClusters;
 
-        openType->shape(item);
-        if (!openType->positionAndAdd(item, availableGlyphs, false))
+        HB_OpenTypeShape(item, /*properties*/0);
+
+        HB_Bool positioned = HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/false);
+
+        HB_FREE_STACKARRAY(logClusters);
+
+        if (!positioned)
             return false;
-
     }
 #endif
 
-    item->glyphs[0].attributes.clusterStart = true;
+    item->attributes[0].clusterStart = true;
     return true;
 }
 
-static bool hangul_shape(QShaperItem *item)
+HB_Bool HB_HangulShape(HB_ShaperItem *item)
 {
-    Q_ASSERT(item->script == QUnicodeTables::Hangul);
+    assert(item->item.script == HB_Script_Hangul);
 
-    const QChar *uc = item->string->unicode() + item->from;
+    const HB_UChar16 *uc = item->string + item->item.pos;;;;
 
     bool allPrecomposed = true;
-    for (int i = 0; i < item->length; ++i) {
-        if (!hangul_isPrecomposed(uc[i].unicode())) {
+    for (int i = 0; i < item->item.length; ++i) {
+        if (!hangul_isPrecomposed(uc[i])) {
             allPrecomposed = false;
             break;
         }
     }
 
     if (!allPrecomposed) {
-#ifndef QT_NO_OPENTYPE
-        QOpenType *openType = item->font->openType();
-        if (openType && !openType->supportsScript(item->script))
-            openType = 0;
-        if (openType)
-            openType->selectScript(item, QUnicodeTables::Hangul, hangul_features);
-#else
-        QOpenType *openType = 0;
+        HB_Bool openType = false;
+#ifndef NO_OPENTYPE
+        openType = HB_SelectScript(item, hangul_features);
 #endif
 
         unsigned short *logClusters = item->log_clusters;
 
-        QShaperItem syllable = *item;
+        HB_ShaperItem syllable = *item;
         int first_glyph = 0;
 
-        int sstart = item->from;
-        int end = sstart + item->length;
+        int sstart = item->item.pos;
+        int end = sstart + item->item.length;
         while (sstart < end) {
-            int send = hangul_nextSyllableBoundary(*(item->string), sstart, end);
+            int send = hangul_nextSyllableBoundary(item->string, sstart, end);
 
-            syllable.from = sstart;
-            syllable.length = send-sstart;
+            syllable.item.pos = sstart;
+            syllable.item.length = send-sstart;
             syllable.glyphs = item->glyphs + first_glyph;
+            syllable.attributes = item->attributes + first_glyph;
             syllable.num_glyphs = item->num_glyphs - first_glyph;
-            if (!hangul_shape_syllable(openType, &syllable)) {
+            if (!hangul_shape_syllable(&syllable, openType)) {
                 item->num_glyphs += syllable.num_glyphs;
                 return false;
             }
             // fix logcluster array
             for (int i = sstart; i < send; ++i)
-                logClusters[i-item->from] = first_glyph;
+                logClusters[i-item->item.pos] = first_glyph;
             sstart = send;
             first_glyph += syllable.num_glyphs;
         }
@@ -239,9 +242,7 @@ static bool hangul_shape(QShaperItem *item)
         return true;
     }
 
-    return basic_shape(item);
+    return HB_BasicShape(item);
 }
-#endif
 
-#endif
 

@@ -15,10 +15,6 @@
 
 static const HB_UChar16 ReplacementCharacter = 0xfffd;
 
-typedef enum {
-    CcmpProperty = 0x1
-};
-
 typedef struct {
     unsigned char shape;
     unsigned char justification;
@@ -925,19 +921,6 @@ static void shapedString(const HB_UChar16 *uc, uint32_t stringLength, int from, 
 }
 
 #ifndef NO_OPENTYPE
-
-enum {
-    InitProperty = 0x2,
-    IsolProperty = 0x4,
-    FinaProperty = 0x8,
-    MediProperty = 0x10,
-    RligProperty = 0x20,
-    CaltProperty = 0x40,
-    LigaProperty = 0x80,
-    DligProperty = 0x100,
-    CswhProperty = 0x200,
-    MsetProperty = 0x400
-};
 
 static const HB_OpenTypeFeature arabic_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
