@@ -512,7 +512,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
 
 static HB_Bool thaana_shape(HB_ShaperItem *) {}
 static HB_Bool indic_shape(HB_ShaperItem *) {}
-static HB_Bool khmer_shape(HB_ShaperItem *) {}
 HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
 static HB_AttributeFunction thai_attributes = 0;
@@ -571,7 +570,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Runic
     { HB_BasicShape, 0 },
     // Khmer
-    { khmer_shape, HB_KhmerAttributes }
+    { HB_KhmerShape, HB_KhmerAttributes }
 };
 
 void HB_GetCharAttributes(const HB_UChar16 *string, uint32_t stringLength,

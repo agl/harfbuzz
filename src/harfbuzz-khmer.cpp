@@ -314,10 +314,8 @@ static inline int khmer_nextSyllableBoundary(const HB_UChar16 *s, int start, int
     return pos;
 }
 
-#if 0
-
-#ifndef QT_NO_OPENTYPE
-static const QOpenType::Features khmer_features[] = {
+#ifndef NO_OPENTYPE
+static const HB_OpenTypeFeature khmer_features[] = {
     { FT_MAKE_TAG( 'p', 'r', 'e', 'f' ), PreFormProperty },
     { FT_MAKE_TAG( 'b', 'l', 'w', 'f' ), BelowFormProperty },
     { FT_MAKE_TAG( 'a', 'b', 'v', 'f' ), AboveFormProperty },
@@ -332,22 +330,17 @@ static const QOpenType::Features khmer_features[] = {
 #endif
 
 
-#if defined(Q_WS_X11) || defined(Q_WS_QWS)
-static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
+static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
 {
-#ifndef QT_NO_OPENTYPE
-    if (openType)
-        openType->selectScript(item, QUnicodeTables::Khmer, khmer_features);
-#endif
     // according to the specs this is the max length one can get
     // ### the real value should be smaller
-    assert(item->length < 13);
+    assert(item->item.length < 13);
 
-    KHDEBUG("syllable from %d len %d, str='%s'", item->from, item->length,
-	    item->string->mid(item->from, item->length).toUtf8().data());
+//    KHDEBUG("syllable from %d len %d, str='%s'", item->from, item->length,
+//	    item->string->mid(item->from, item->length).toUtf8().data());
 
     int len = 0;
-    int syllableEnd = item->from + item->length;
+    int syllableEnd = item->item.pos + item->item.length;
     unsigned short reordered[16];
     unsigned char properties[16];
     enum {
@@ -361,7 +354,7 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
 #ifdef KHMER_DEBUG
     qDebug("original:");
     for (int i = from; i < syllableEnd; i++) {
-        qDebug("    %d: %4x", i, string[i].unicode());
+        qDebug("    %d: %4x", i, string[i]);
     }
 #endif
 
@@ -370,8 +363,8 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
     // therefore the only one that requires saving space before the base.
     //
     int coengRo = -1;  // There is no Coeng Ro, if found this value will change
-    for (int i = item->from; i < syllableEnd; i += 1) {
-        KhmerCharClass charClass = getKhmerCharClass(item->string->at(i));
+    for (int i = item->item.pos; i < syllableEnd; i += 1) {
+        KhmerCharClass charClass = getKhmerCharClass(item->string[i]);
 
         // if a split vowel, write the pre part. In Khmer the pre part
         // is the same for all split vowels, same glyph as pre vowel C_VOWEL_E
@@ -383,7 +376,7 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
         }
         // if a vowel with pos before write it out
         if (charClass & CF_POS_BEFORE) {
-            reordered[len] = item->string->at(i).unicode();
+            reordered[len] = item->string[i];
             properties[len] = PreForm;
             ++len;
             break; // there can be only one vowel
@@ -393,7 +386,7 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
         // and because CC_CONSONANT2 is enough to identify it, as it is the only consonant
         // with this flag
         if ( (charClass & CF_COENG) && (i + 1 < syllableEnd) &&
-              ( (getKhmerCharClass(item->string->at(i+1)) & CF_CLASS_MASK) == CC_CONSONANT2) ) {
+              ( (getKhmerCharClass(item->string[i+1]) & CF_CLASS_MASK) == CC_CONSONANT2) ) {
             coengRo = i;
         }
     }
@@ -412,15 +405,15 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
     // If in the position in which the base should be (first char in the string) there is
     // a character that has the Dotted circle flag (a character that cannot be a base)
     // then write a dotted circle
-    if (getKhmerCharClass(item->string->at(item->from)) & CF_DOTTED_CIRCLE) {
+    if (getKhmerCharClass(item->string[item->item.pos]) & CF_DOTTED_CIRCLE) {
         reordered[len] = C_DOTTED_CIRCLE;
         ++len;
     }
 
     // copy what is left to the output, skipping before vowels and
     // coeng Ro if they are present
-    for (int i = item->from; i < syllableEnd; i += 1) {
-        QChar uc = item->string->at(i);
+    for (int i = item->item.pos; i < syllableEnd; i += 1) {
+        HB_UChar16 uc = item->string[i];
         KhmerCharClass charClass = getKhmerCharClass(uc);
 
         // skip a before vowel, it was already processed
@@ -437,19 +430,19 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
         switch (charClass & CF_POS_MASK)
         {
             case CF_POS_ABOVE :
-                reordered[len] = uc.unicode();
+                reordered[len] = uc;
                 properties[len] = AboveForm;
                 ++len;
                 break;
 
             case CF_POS_AFTER :
-                reordered[len] = uc.unicode();
+                reordered[len] = uc;
                 properties[len] = PostForm;
                 ++len;
                 break;
 
             case CF_POS_BELOW :
-                reordered[len] = uc.unicode();
+                reordered[len] = uc;
                 properties[len] = BelowForm;
                 ++len;
                 break;
@@ -458,13 +451,13 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
                 // assign the correct flags to a coeng consonant
                 // Consonants of type 3 are taged as Post forms and those type 1 as below forms
                 if ( (charClass & CF_COENG) && i + 1 < syllableEnd ) {
-                    unsigned char property = (getKhmerCharClass(item->string->at(i+1)) & CF_CLASS_MASK) == CC_CONSONANT3 ?
+                    unsigned char property = (getKhmerCharClass(item->string[i+1]) & CF_CLASS_MASK) == CC_CONSONANT3 ?
                                               PostForm : BelowForm;
-                    reordered[len] = uc.unicode();
+                    reordered[len] = uc;
                     properties[len] = property;
                     ++len;
                     i += 1;
-                    reordered[len] = item->string->at(i).unicode();
+                    reordered[len] = item->string[i];
                     properties[len] = property;
                     ++len;
                     break;
@@ -476,32 +469,32 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
                 // and there is an extra rule for C_VOWEL_AA + C_SIGN_NIKAHIT also for two
                 // different positions, right after the shifter or after a vowel (Unicode 4)
                 if ( (charClass & CF_SHIFTER) && (i + 1 < syllableEnd) ) {
-                    if (getKhmerCharClass(item->string->at(i+1)) & CF_ABOVE_VOWEL ) {
-                        reordered[len] = uc.unicode();
+                    if (getKhmerCharClass(item->string[i+1]) & CF_ABOVE_VOWEL ) {
+                        reordered[len] = uc;
                         properties[len] = BelowForm;
                         ++len;
                         break;
                     }
                     if (i + 2 < syllableEnd &&
-                        (item->string->at(i+1).unicode() == C_VOWEL_AA) &&
-                        (item->string->at(i+2).unicode() == C_SIGN_NIKAHIT) )
+                        (item->string[i+1] == C_VOWEL_AA) &&
+                        (item->string[i+2] == C_SIGN_NIKAHIT) )
                     {
-                        reordered[len] = uc.unicode();
+                        reordered[len] = uc;
                         properties[len] = BelowForm;
                         ++len;
                         break;
                     }
-                    if (i + 3 < syllableEnd && (getKhmerCharClass(item->string->at(i+3)) & CF_ABOVE_VOWEL) ) {
-                        reordered[len] = uc.unicode();
+                    if (i + 3 < syllableEnd && (getKhmerCharClass(item->string[i+3]) & CF_ABOVE_VOWEL) ) {
+                        reordered[len] = uc;
                         properties[len] = BelowForm;
                         ++len;
                         break;
                     }
                     if (i + 4 < syllableEnd &&
-                        (item->string->at(i+3).unicode() == C_VOWEL_AA) &&
-                        (item->string->at(i+4).unicode() == C_SIGN_NIKAHIT) )
+                        (item->string[i+3] == C_VOWEL_AA) &&
+                        (item->string[i+4] == C_SIGN_NIKAHIT) )
                     {
-                        reordered[len] = uc.unicode();
+                        reordered[len] = uc;
                         properties[len] = BelowForm;
                         ++len;
                         break;
@@ -509,7 +502,7 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
                 }
 
                 // default - any other characters
-                reordered[len] = uc.unicode();
+                reordered[len] = uc;
                 ++len;
                 break;
         } // switch
@@ -518,15 +511,19 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
 #ifndef QT_NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->stringToCMap((const QChar *)reordered, len, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    if (!item->font->klass->stringToGlyphs(item->font,
+                                           reordered, len,
+                                           item->glyphs, &item->num_glyphs,
+                                           item->item.bidiLevel % 2))
         return false;
+
 
     KHDEBUG("after shaping: len=%d", len);
     for (int i = 0; i < len; i++) {
-	item->glyphs[i].attributes.mark = false;
-	item->glyphs[i].attributes.clusterStart = false;
-	item->glyphs[i].attributes.justification = 0;
-	item->glyphs[i].attributes.zeroWidth = false;
+	item->attributes[i].mark = false;
+	item->attributes[i].clusterStart = false;
+	item->attributes[i].justification = 0;
+	item->attributes[i].zeroWidth = false;
 	KHDEBUG("    %d: %4x property=%x", i, reordered[i], properties[i]);
     }
 
@@ -552,47 +549,44 @@ static bool khmer_shape_syllable(QOpenType *openType, QShaperItem *item)
                 where[i] &= ~PostFormProperty;
         }
 
-        openType->shape(item, where);
-        if (!openType->positionAndAdd(item, availableGlyphs, false))
+        HB_OpenTypeShape(item, where);
+        if (!HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/false))
             return false;
     } else
 #endif
     {
 	KHDEBUG("Not using openType");
-	Q_UNUSED(openType);
     }
 
-    item->glyphs[0].attributes.clusterStart = true;
+    item->attributes[0].clusterStart = true;
     return true;
 }
 
-static bool khmer_shape(QShaperItem *item)
+HB_Bool HB_KhmerShape(HB_ShaperItem *item)
 {
-    assert(item->script == QUnicodeTables::Khmer);
+    assert(item->item.script == HB_Script_Khmer);
 
+    HB_Bool openType = false;
 #ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (openType && !openType->supportsScript(item->script))
-        openType = 0;
-#else
-    QOpenType *openType = 0;
+    openType = HB_SelectScript(item, khmer_features);
 #endif
     unsigned short *logClusters = item->log_clusters;
 
-    QShaperItem syllable = *item;
+    HB_ShaperItem syllable = *item;
     int first_glyph = 0;
 
-    int sstart = item->from;
-    int end = sstart + item->length;
-    KHDEBUG("khmer_shape: from %d length %d", item->from, item->length);
+    int sstart = item->item.pos;
+    int end = sstart + item->item.length;
+    KHDEBUG("khmer_shape: from %d length %d", item->item.pos, item->item.length);
     while (sstart < end) {
         bool invalid;
-        int send = khmer_nextSyllableBoundary(*item->string, sstart, end, &invalid);
+        int send = khmer_nextSyllableBoundary(item->string, sstart, end, &invalid);
         KHDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
                invalid ? "true" : "false");
-        syllable.from = sstart;
-        syllable.length = send-sstart;
+        syllable.item.pos = sstart;
+        syllable.item.length = send-sstart;
         syllable.glyphs = item->glyphs + first_glyph;
+        syllable.attributes = item->attributes + first_glyph;
         syllable.num_glyphs = item->num_glyphs - first_glyph;
         if (!khmer_shape_syllable(openType, &syllable)) {
             KHDEBUG("syllable shaping failed, syllable requests %d glyphs", syllable.num_glyphs);
@@ -602,11 +596,11 @@ static bool khmer_shape(QShaperItem *item)
         // fix logcluster array
         KHDEBUG("syllable:");
         for (int i = first_glyph; i < first_glyph + syllable.num_glyphs; ++i)
-            KHDEBUG("        %d -> glyph %x", i, item->glyphs[i].glyph);
+            KHDEBUG("        %d -> glyph %x", i, item->glyphs[i]);
         KHDEBUG("    logclusters:");
         for (int i = sstart; i < send; ++i) {
             KHDEBUG("        %d -> glyph %d", i, first_glyph);
-            logClusters[i-item->from] = first_glyph;
+            logClusters[i-item->item.pos] = first_glyph;
         }
         sstart = send;
         first_glyph += syllable.num_glyphs;
@@ -614,9 +608,6 @@ static bool khmer_shape(QShaperItem *item)
     item->num_glyphs = first_glyph;
     return true;
 }
-#endif
-
-#endif
 
 void HB_KhmerAttributes(HB_Script /*script*/, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
 {
