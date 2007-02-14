@@ -510,8 +510,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
     return true;
 }
 
-static HB_Bool indic_shape(HB_ShaperItem *) {}
-
 static HB_AttributeFunction thai_attributes = 0;
 
 const HB_ScriptEngine HB_ScriptEngines[] = {
@@ -532,25 +530,25 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Thaana
     { HB_BasicShape, 0 },
     // Devanagari
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Bengali
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Gurmukhi
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Gujarati
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Oriya
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Tamil
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Telugu
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Kannada
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Malayalam
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Sinhala
-    { indic_shape, HB_IndicAttributes },
+    { HB_IndicShape, HB_IndicAttributes },
     // Thai
     { HB_BasicShape, thai_attributes },
     // Lao

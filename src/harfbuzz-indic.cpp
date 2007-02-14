@@ -13,6 +13,26 @@
 
 #include <assert.h>
 
+#define FLAG(x) (1 << (x))
+
+static HB_Bool isLetter(HB_UChar16 ucs)
+{
+    const int test = FLAG(HB_Letter_Uppercase) |
+                     FLAG(HB_Letter_Lowercase) |
+                     FLAG(HB_Letter_Titlecase) |
+                     FLAG(HB_Letter_Modifier) |
+                     FLAG(HB_Letter_Other);
+    return FLAG(HB_GetUnicodeCharCategory(ucs)) & test;
+}
+
+static HB_Bool isMark(HB_UChar16 ucs)
+{
+    const int test = FLAG(HB_Mark_NonSpacing) |
+                     FLAG(HB_Mark_SpacingCombining) |
+                     FLAG(HB_Mark_Enclosing);
+    return FLAG(HB_GetUnicodeCharCategory(ucs)) & test;
+}
+
 enum Form {
     Invalid = 0x0,
     UnknownForm = Invalid,
@@ -1073,9 +1093,8 @@ static inline void splitMatra(unsigned short *reordered, int matra, int &len, in
     len++;
 }
 
-#if 0
-#ifndef QT_NO_OPENTYPE
-static const QOpenType::Features indic_features[] = {
+#ifndef NO_OPENTYPE
+static const HB_OpenTypeFeature indic_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     { FT_MAKE_TAG('i', 'n', 'i', 't'), InitProperty },
     { FT_MAKE_TAG('n', 'u', 'k', 't'), NuktaProperty },
@@ -1093,7 +1112,6 @@ static const QOpenType::Features indic_features[] = {
     { 0, 0 }
 };
 #endif
-#endif
 
 // #define INDIC_DEBUG
 #ifdef INDIC_DEBUG
@@ -1102,7 +1120,6 @@ static const QOpenType::Features indic_features[] = {
 #define IDEBUG if(0) printf
 #endif
 
-#if 0
 #ifdef INDIC_DEBUG
 static QString propertiesToString(int properties)
 {
@@ -1146,36 +1163,35 @@ static QString propertiesToString(int properties)
 }
 #endif
 
-#if defined(Q_WS_X11) || defined(Q_WS_QWS)
-static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool invalid)
+static bool indic_shape_syllable(HB_Bool openType, HB_ShaperItem *item, bool invalid)
 {
-    Q_UNUSED(openType)
-    int script = item->script;
-    Q_ASSERT(script >= QUnicodeTables::Devanagari && script <= QUnicodeTables::Sinhala);
-    const unsigned short script_base = 0x0900 + 0x80*(script-QUnicodeTables::Devanagari);
+    HB_Script script = item->item.script;
+    assert(script >= HB_Script_Devanagari && script <= HB_Script_Sinhala);
+    const unsigned short script_base = 0x0900 + 0x80*(script-HB_Script_Devanagari);
     const unsigned short ra = script_base + 0x30;
     const unsigned short halant = script_base + 0x4d;
     const unsigned short nukta = script_base + 0x3c;
+    bool control = false;
 
-    int len = item->length;
-    IDEBUG(">>>>> indic shape: from=%d, len=%d invalid=%d", item->from, item->length, invalid);
+    int len = item->item.length;
+    IDEBUG(">>>>> indic shape: from=%d, len=%d invalid=%d", item->item.pos, item->item.length, invalid);
 
     if (item->num_glyphs < len+4) {
         item->num_glyphs = len+4;
         return false;
     }
 
-    QVarLengthArray<unsigned short> reordered(len+4);
-    QVarLengthArray<unsigned char> position(len+4);
+    HB_STACKARRAY(HB_UChar16, reordered, len + 4);
+    HB_STACKARRAY(uint8_t, position, len + 4);
 
-    unsigned char properties = scriptProperties[script-QUnicodeTables::Devanagari];
+    unsigned char properties = scriptProperties[script-HB_Script_Devanagari];
 
     if (invalid) {
-        *reordered.data() = 0x25cc;
-        memcpy(reordered.data()+1, item->string->unicode() + item->from, len*sizeof(QChar));
+        *reordered = 0x25cc;
+        memcpy(reordered+1, item->string + item->item.pos, len*sizeof(HB_UChar16));
         len++;
     } else {
-        memcpy(reordered.data(), item->string->unicode() + item->from, len*sizeof(QChar));
+        memcpy(reordered, item->string + item->item.pos, len*sizeof(HB_UChar16));
     }
     if (reordered[len-1] == 0x200c) // zero width non joiner
         len--;
@@ -1192,7 +1208,7 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 #endif
 
     if (len != 1) {
-        unsigned short *uc = reordered.data();
+        HB_UChar16 *uc = reordered;
         bool beginsWithRa = false;
 
         // Rule 1: find base consonant
@@ -1212,7 +1228,7 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
         // * In Kannada and Telugu, the base consonant cannot be
         //   farther than 3 consonants from the end of the syllable.
         // #### replace the HasReph property by testing if the feature exists in the font!
-        if (form(*uc) == Consonant || (script == QUnicodeTables::Bengali && form(*uc) == IndependentVowel)) {
+        if (form(*uc) == Consonant || (script == HB_Script_Bengali && form(*uc) == IndependentVowel)) {
             beginsWithRa = (properties & HasReph) && ((len > 2) && *uc == ra && *(uc+1) == halant);
 
             if (beginsWithRa && form(*(uc+2)) == Control)
@@ -1228,8 +1244,8 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
             // * the matras position for rule 3 and 4
 
             // figure out possible base glyphs
-            memset(position.data(), 0, len);
-            if (script == QUnicodeTables::Devanagari || script == QUnicodeTables::Gujarati) {
+            memset(position, 0, len);
+            if (script == HB_Script_Devanagari || script == HB_Script_Gujarati) {
                 bool vattu = false;
                 for (i = base; i < len; ++i) {
                     position[i] = form(uc[i]);
@@ -1256,21 +1272,21 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
             int skipped = 0;
             Position pos = Post;
             for (i = len-1; i > base; i--) {
-                if (position[i] != Consonant && (position[i] != Control || script == QUnicodeTables::Kannada))
+                if (position[i] != Consonant && (position[i] != Control || script == HB_Script_Kannada))
                     continue;
 
                 Position charPosition = indic_position(uc[i]);
                 if (pos == Post && charPosition == Post) {
                     pos = Post;
                 } else if ((pos == Post || pos == Below) && charPosition == Below) {
-                    if (script == QUnicodeTables::Devanagari || script == QUnicodeTables::Gujarati)
+                    if (script == HB_Script_Devanagari || script == HB_Script_Gujarati)
                         base = i;
                     pos = Below;
                 } else {
                     base = i;
                     break;
                 }
-                if (skipped == 2 && (script == QUnicodeTables::Kannada || script == QUnicodeTables::Telugu)) {
+                if (skipped == 2 && (script == HB_Script_Kannada || script == HB_Script_Telugu)) {
                     base = i;
                     break;
                 }
@@ -1324,12 +1340,12 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
                     toPos++;
                 if (toPos < len-1 && uc[toPos] == ra && uc[toPos+1] == halant)
                     toPos += 2;
-                if (script == QUnicodeTables::Devanagari || script == QUnicodeTables::Gujarati || script == QUnicodeTables::Bengali) {
+                if (script == HB_Script_Devanagari || script == HB_Script_Gujarati || script == HB_Script_Bengali) {
                     if (matra_position == Post || matra_position == Split) {
                         toPos = matra+1;
                         matra -= 2;
                     }
-                } else if (script == QUnicodeTables::Kannada) {
+                } else if (script == HB_Script_Kannada) {
                     toPos = len;
                     matra -= 2;
                 }
@@ -1408,7 +1424,7 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 #endif
         // we continuosly position the matras and vowel marks and increase the fixed
         // until we reached the end.
-        const IndicOrdering *finalOrder = indic_order[script-QUnicodeTables::Devanagari];
+        const IndicOrdering *finalOrder = indic_order[script-HB_Script_Devanagari];
 
         IDEBUG("    reordering pass:");
         IDEBUG("        base=%d fixed=%d", base, fixed);
@@ -1416,8 +1432,8 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
         while (finalOrder[toMove].form && fixed < len-1) {
             IDEBUG("        fixed = %d, toMove=%d, moving form %d with pos %d", fixed, toMove, finalOrder[toMove].form, finalOrder[toMove].position);
             for (i = fixed; i < len; i++) {
-                IDEBUG() << "           i=" << i << "uc=" << hex << uc[i] << "form=" << form(uc[i])
-                         << "position=" << position[i];
+//                IDEBUG() << "           i=" << i << "uc=" << hex << uc[i] << "form=" << form(uc[i])
+//                         << "position=" << position[i];
                 if (form(uc[i]) == finalOrder[toMove].form &&
                      position[i] == finalOrder[toMove].position) {
                     // need to move this glyph
@@ -1465,23 +1481,25 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 #ifndef QT_NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->stringToCMap((const QChar *)reordered.data(), len, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
-        return false;
+    if (!item->font->klass->stringToGlyphs(item->font,
+                                           reordered, len,
+                                           item->glyphs, &item->num_glyphs,
+                                           item->item.bidiLevel % 2))
+        goto error;
 
 
     IDEBUG("  base=%d, reph=%d", base, reph);
     IDEBUG("reordered:");
     for (i = 0; i < len; i++) {
-        item->glyphs[i].attributes.mark = false;
-        item->glyphs[i].attributes.clusterStart = false;
-        item->glyphs[i].attributes.justification = 0;
-        item->glyphs[i].attributes.zeroWidth = false;
+        item->attributes[i].mark = false;
+        item->attributes[i].clusterStart = false;
+        item->attributes[i].justification = 0;
+        item->attributes[i].zeroWidth = false;
         IDEBUG("    %d: %4x", i, reordered[i]);
     }
 
     // now we have the syllable in the right order, and can start running it through open type.
 
-    bool control = false;
     for (i = 0; i < len; ++i)
         control |= (form(reordered[i]) == Control);
 
@@ -1494,8 +1512,8 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
         // the open type engine manually afterwards.  for indic this
         // is rather simple, as all chars just point to the first
         // glyph in the syllable.
-        QVarLengthArray<unsigned short> clusters(len);
-        QVarLengthArray<unsigned int> properties(len);
+        HB_STACKARRAY(unsigned short, clusters, len);
+        HB_STACKARRAY(unsigned int, properties, len);
 
         for (i = 0; i < len; ++i)
             clusters[i] = i;
@@ -1513,8 +1531,8 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 
         // Ccmp always applies
         // Init
-        if (item->from == 0
-            || !(item->string->unicode()[item->from-1].isLetter() ||  item->string->unicode()[item->from-1].isMark()))
+        if (item->item.pos == 0
+            || !(isLetter(item->string[item->item.pos-1]) || isMark(item->string[item->item.pos-1])))
             properties[0] &= ~InitProperty;
 
         // Nukta always applies
@@ -1530,7 +1548,7 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
         for (i = base+1; i < len; ++i)
             properties[i] &= ~BelowFormProperty;
 
-        if (script == QUnicodeTables::Devanagari || script == QUnicodeTables::Gujarati) {
+        if (script == HB_Script_Devanagari || script == HB_Script_Gujarati) {
             // vattu glyphs need this aswell
             bool vattu = false;
             for (i = base-2; i > 1; --i) {
@@ -1584,14 +1602,14 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 #endif
 
         // initialize
-        item->log_clusters = clusters.data();
-        openType->shape(item, properties.data());
+        item->log_clusters = clusters;
+        HB_OpenTypeShape(item, properties);
 
-        int newLen = openType->len();
-        HB_GlyphItem otl_glyphs = openType->glyphs();
+        int newLen = item->font->face.buffer->in_length;
+        HB_GlyphItem otl_glyphs = item->font->face.buffer->in_string;
 
         // move the left matra back to its correct position in malayalam and tamil
-        if ((script == QUnicodeTables::Malayalam || script == QUnicodeTables::Tamil) && (form(reordered[0]) == Matra)) {
+        if ((script == HB_Script_Malayalam || script == HB_Script_Tamil) && (form(reordered[0]) == Matra)) {
 //             qDebug("reordering matra, len=%d", newLen);
             // need to find the base in the shaped string and move the matra there
             int basePos = 0;
@@ -1608,8 +1626,13 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
             }
         }
 
-        if (!openType->positionAndAdd(item, availableGlyphs, false))
-            return false;
+        HB_Bool positioned = HB_OpenTypePosition(item, availableGlyphs, false);
+
+        HB_FREE_STACKARRAY(clusters);
+        HB_FREE_STACKARRAY(properties);
+
+        if (!positioned)
+            goto error;
 
         if (control) {
             IDEBUG("found a control char in the syllable");
@@ -1621,6 +1644,7 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
                         break;
                 }
                 item->glyphs[j] = item->glyphs[i];
+                item->attributes[j] = item->attributes[i];
                 ++i;
                 ++j;
             }
@@ -1629,14 +1653,19 @@ static bool indic_shape_syllable(QOpenType *openType, QShaperItem *item, bool in
 
     }
 #endif // QT_NO_OPENTYPE
-    item->glyphs[0].attributes.clusterStart = true;
+    item->attributes[0].clusterStart = true;
+
+    HB_FREE_STACKARRAY(reordered);
+    HB_FREE_STACKARRAY(position);
 
     IDEBUG("<<<<<<");
     return true;
-}
-#endif // Q_WS_X11 || Q_WS_QWS
 
-#endif
+error:
+    HB_FREE_STACKARRAY(reordered);
+    HB_FREE_STACKARRAY(position);
+    return false;
+}
 
 /* syllables are of the form:
 
@@ -1728,35 +1757,31 @@ static int indic_nextSyllableBoundary(HB_Script script, const HB_UChar16 *s, int
     return pos+start;
 }
 
-#if 0
-
-static bool indic_shape(QShaperItem *item)
+HB_Bool HB_IndicShape(HB_ShaperItem *item)
 {
-    Q_ASSERT(item->script >= QUnicodeTables::Devanagari && item->script <= QUnicodeTables::Sinhala);
+    assert(item->item.script >= HB_Script_Devanagari && item->item.script <= HB_Script_Sinhala);
 
+    HB_Bool openType = false;
 #ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (openType)
-        openType->selectScript(item, item->script, indic_features);
-#else
-    QOpenType *openType = 0;
+    openType = HB_SelectScript(item, indic_features);
 #endif
     unsigned short *logClusters = item->log_clusters;
 
-    QShaperItem syllable = *item;
+    HB_ShaperItem syllable = *item;
     int first_glyph = 0;
 
-    int sstart = item->from;
-    int end = sstart + item->length;
-    IDEBUG("indic_shape: from %d length %d", item->from, item->length);
+    int sstart = item->item.pos;
+    int end = sstart + item->item.length;
+    IDEBUG("indic_shape: from %d length %d", item->item.pos, item->item.length);
     while (sstart < end) {
         bool invalid;
-        int send = indic_nextSyllableBoundary(item->script, *item->string, sstart, end, &invalid);
+        int send = indic_nextSyllableBoundary(item->item.script, item->string, sstart, end, &invalid);
         IDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
                invalid ? "true" : "false");
-        syllable.from = sstart;
-        syllable.length = send-sstart;
+        syllable.item.pos = sstart;
+        syllable.item.length = send-sstart;
         syllable.glyphs = item->glyphs + first_glyph;
+        syllable.attributes = item->attributes + first_glyph;
         syllable.num_glyphs = item->num_glyphs - first_glyph;
         if (!indic_shape_syllable(openType, &syllable, invalid)) {
             IDEBUG("syllable shaping failed, syllable requests %d glyphs", syllable.num_glyphs);
@@ -1766,11 +1791,11 @@ static bool indic_shape(QShaperItem *item)
         // fix logcluster array
         IDEBUG("syllable:");
         for (int i = first_glyph; i < first_glyph + syllable.num_glyphs; ++i)
-            IDEBUG("        %d -> glyph %x", i, item->glyphs[i].glyph);
+            IDEBUG("        %d -> glyph %x", i, item->glyphs[i]);
         IDEBUG("    logclusters:");
         for (int i = sstart; i < send; ++i) {
             IDEBUG("        %d -> glyph %d", i, first_glyph);
-            logClusters[i-item->from] = first_glyph;
+            logClusters[i-item->item.pos] = first_glyph;
         }
         sstart = send;
         first_glyph += syllable.num_glyphs;
@@ -1778,7 +1803,6 @@ static bool indic_shape(QShaperItem *item)
     item->num_glyphs = first_glyph;
     return true;
 }
-#endif
 
 void HB_IndicAttributes(HB_Script script, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
 {
