@@ -512,7 +512,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
 
 static HB_Bool thaana_shape(HB_ShaperItem *) {}
 static HB_Bool indic_shape(HB_ShaperItem *) {}
-static HB_Bool myanmar_shape(HB_ShaperItem *) {}
 static HB_Bool khmer_shape(HB_ShaperItem *) {}
 HB_Bool HB_TibetanShape(HB_ShaperItem *) {}
 
@@ -562,7 +561,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Tibetan
     { HB_TibetanShape, HB_TibetanAttributes },
     // Myanmar
-    { myanmar_shape, HB_MyanmarAttributes },
+    { HB_MyanmarShape, HB_MyanmarAttributes },
     // Georgian
     { HB_BasicShape, 0 },
     // Hangul

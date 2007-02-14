@@ -48,7 +48,25 @@ typedef enum {
     LigaProperty = 0x80,
     DligProperty = 0x100,
     CswhProperty = 0x200,
-    MsetProperty = 0x400
+    MsetProperty = 0x400,
+
+    // used by indic and myanmar shaper
+    NuktaProperty = 0x4,
+    AkhantProperty = 0x8,
+    RephProperty = 0x10,
+    PreFormProperty = 0x20,
+    BelowFormProperty = 0x40,
+    AboveFormProperty = 0x80,
+    HalfFormProperty = 0x100,
+    PostFormProperty = 0x200,
+    VattuProperty = 0x400,
+    PreSubstProperty = 0x800,
+    BelowSubstProperty = 0x1000,
+    AboveSubstProperty = 0x2000,
+    PostSubstProperty = 0x4000,
+    HalantProperty = 0x8000,
+    CligProperty = 0x10000
+
 } HB_OpenTypeProperty;
 
 // return true if ok.
@@ -67,6 +85,7 @@ extern HB_Bool HB_TibetanShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_ArabicShape(HB_ShaperItem *shaper_item);
 extern HB_Bool HB_HangulShape(HB_ShaperItem *shaper_item);
+extern HB_Bool HB_MyanmarShape(HB_ShaperItem *shaper_item);
 
 extern void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 

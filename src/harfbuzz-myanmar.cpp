@@ -13,6 +13,10 @@
 
 #include <assert.h>
 
+enum {
+    C_DOTTED_CIRCLE = 0x25CC
+};
+
 enum MymrCharClassValues
 {
     Mymr_CC_RESERVED             =  0,
@@ -201,12 +205,10 @@ static inline int myanmar_nextSyllableBoundary(const HB_UChar16 *s, int start, i
     return pos;
 }
 
-#if 0
-
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
 // ###### might have to change order of above and below forms and substitutions,
 // but according to Unicode below comes before above
-static const QOpenType::Features myanmar_features[] = {
+static const HB_OpenTypeFeature myanmar_features[] = {
     { FT_MAKE_TAG('p', 'r', 'e', 'f'), PreFormProperty },
     { FT_MAKE_TAG('b', 'l', 'w', 'f'), BelowFormProperty },
     { FT_MAKE_TAG('a', 'b', 'v', 'f'), AboveFormProperty },
@@ -234,23 +236,19 @@ static const QOpenType::Features myanmar_features[] = {
 // This means that we can keep the logical order apart from having to
 // move the pre vowel, medial ra and kinzi
 
-static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool invalid)
+static bool myanmar_shape_syllable(HB_Bool openType, HB_ShaperItem *item, bool invalid)
 {
-#ifndef QT_NO_OPENTYPE
-    if (openType)
-        openType->selectScript(item, QUnicodeTables::Myanmar, myanmar_features);
-#endif
     // according to the table the max length of a syllable should be around 14 chars
-    Q_ASSERT(item->length < 32);
+    assert(item->item.length < 32);
 
-    MMDEBUG("\nsyllable from %d len %d, str='%s'", item->from, item->length,
-	    item->string->mid(item->from, item->length).toUtf8().data());
+//    MMDEBUG("\nsyllable from %d len %d, str='%s'", item->item.pos, item->item.length,
+//	    item->string->mid(item->from, item->length).toUtf8().data());
 
-    const QChar *uc = item->string->unicode() + item->from;
+    const HB_UChar16 *uc = item->string + item->item.pos;
 #ifdef MYANMAR_DEBUG
-    qDebug("original:");
-    for (int i = 0; i < item->length; i++) {
-        qDebug("    %d: %4x", i, uc[i].unicode());
+    printf("original:");
+    for (int i = 0; i < item->item.length; i++) {
+        printf("    %d: %4x", i, uc[i]);
     }
 #endif
     int vowel_e = -1;
@@ -258,8 +256,8 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
     int medial_ra = -1;
     int base = -1;
 
-    for (int i = 0; i < item->length; ++i) {
-        ushort chr = uc[i].unicode();
+    for (int i = 0; i < item->item.length; ++i) {
+        HB_UChar16 chr = uc[i];
 
         if (chr == Mymr_C_VOWEL_E) {
             vowel_e = i;
@@ -267,8 +265,8 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
         }
         if (i == 0
             && chr == Mymr_C_NGA
-            && i + 2 < item->length
-            && uc[i+1].unicode() == Mymr_C_VIRAMA) {
+            && i + 2 < item->item.length
+            && uc[i+1] == Mymr_C_VIRAMA) {
             int mc = getMyanmarCharClass(uc[i+2]);
             //MMDEBUG("maybe kinzi: mc=%x", mc);
             if ((mc & Mymr_CF_CONSONANT) == Mymr_CF_CONSONANT) {
@@ -278,8 +276,8 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
         }
         if (base >= 0
             && chr == Mymr_C_VIRAMA
-            && i + 1 < item->length
-            && uc[i+1].unicode() == Mymr_C_RA) {
+            && i + 1 < item->item.length
+            && uc[i+1] == Mymr_C_RA) {
             medial_ra = i;
             continue;
         }
@@ -326,7 +324,7 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
     int basePos = -1;
     // copy the rest of the syllable to the output, inserting the kinzi
     // at the correct place
-    for (int i = 0; i < item->length; ++i) {
+    for (int i = 0; i < item->item.length; ++i) {
         if (i == vowel_e)
             continue;
         if (i == medial_ra || i == kinzi) {
@@ -334,7 +332,7 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
             continue;
         }
 
-        ushort chr = uc[i].unicode();
+        ushort chr = uc[i];
         MymrCharClass cc = getMyanmarCharClass(uc[i]);
         if (kinzi >= 0 && i > base && (cc & Mymr_CF_AFTER_KINZI)) {
             reordered[len] = Mymr_C_NGA;
@@ -385,24 +383,27 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
         len += 2;
     }
 
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->stringToCMap((const QChar *)reordered, len, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+    if (!item->font->klass->stringToGlyphs(item->font,
+                                           reordered, len,
+                                           item->glyphs, &item->num_glyphs,
+                                           item->item.bidiLevel % 2))
         return false;
 
     MMDEBUG("after shaping: len=%d", len);
     for (int i = 0; i < len; i++) {
-	item->glyphs[i].attributes.mark = false;
-	item->glyphs[i].attributes.clusterStart = false;
-	item->glyphs[i].attributes.justification = 0;
-	item->glyphs[i].attributes.zeroWidth = false;
+	item->attributes[i].mark = false;
+	item->attributes[i].clusterStart = false;
+	item->attributes[i].justification = 0;
+	item->attributes[i].zeroWidth = false;
 	MMDEBUG("    %d: %4x property=%x", i, reordered[i], properties[i]);
     }
 
     // now we have the syllable in the right order, and can start running it through open type.
 
-#ifndef QT_NO_OPENTYPE
+#ifndef NO_OPENTYPE
     if (openType) {
 	unsigned short logClusters[32];
 	for (int i = 0; i < len; ++i)
@@ -427,47 +428,44 @@ static bool myanmar_shape_syllable(QOpenType *openType, QShaperItem *item, bool 
                 where[i] &= ~PostFormProperty;
         }
 
-        openType->shape(item, where);
-        if (!openType->positionAndAdd(item, availableGlyphs, false))
+        HB_OpenTypeShape(item, where);
+        if (!HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/false))
             return false;
     } else
 #endif
     {
 	MMDEBUG("Not using openType");
-	Q_UNUSED(openType);
     }
 
-    item->glyphs[0].attributes.clusterStart = true;
+    item->attributes[0].clusterStart = true;
     return true;
 }
 
-static bool myanmar_shape(QShaperItem *item)
+HB_Bool HB_MyanmarShape(HB_ShaperItem *item)
 {
-    Q_ASSERT(item->script == QUnicodeTables::Myanmar);
+    assert(item->item.script == HB_Script_Myanmar);
 
-#ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
-    if (openType && !openType->supportsScript(item->script))
-        openType = 0;
-#else
-    QOpenType *openType = 0;
+    HB_Bool openType = false;
+#ifndef NO_OPENTYPE
+    openType = HB_SelectScript(item, myanmar_features);
 #endif
     unsigned short *logClusters = item->log_clusters;
 
-    QShaperItem syllable = *item;
+    HB_ShaperItem syllable = *item;
     int first_glyph = 0;
 
-    int sstart = item->from;
-    int end = sstart + item->length;
-    MMDEBUG("myanmar_shape: from %d length %d", item->from, item->length);
+    int sstart = item->item.pos;
+    int end = sstart + item->item.length;
+    MMDEBUG("myanmar_shape: from %d length %d", item->item.pos, item->item.length);
     while (sstart < end) {
         bool invalid;
-        int send = myanmar_nextSyllableBoundary(*item->string, sstart, end, &invalid);
+        int send = myanmar_nextSyllableBoundary(item->string, sstart, end, &invalid);
         MMDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
                invalid ? "true" : "false");
-        syllable.from = sstart;
-        syllable.length = send-sstart;
+        syllable.item.pos = sstart;
+        syllable.item.length = send-sstart;
         syllable.glyphs = item->glyphs + first_glyph;
+        syllable.attributes = item->attributes + first_glyph;
         syllable.num_glyphs = item->num_glyphs - first_glyph;
         if (!myanmar_shape_syllable(openType, &syllable, invalid)) {
             MMDEBUG("syllable shaping failed, syllable requests %d glyphs", syllable.num_glyphs);
@@ -478,11 +476,11 @@ static bool myanmar_shape(QShaperItem *item)
         // fix logcluster array
         MMDEBUG("syllable:");
         for (int i = first_glyph; i < first_glyph + syllable.num_glyphs; ++i)
-            MMDEBUG("        %d -> glyph %x", i, item->glyphs[i].glyph);
+            MMDEBUG("        %d -> glyph %x", i, item->glyphs[i]);
         MMDEBUG("    logclusters:");
         for (int i = sstart; i < send; ++i) {
             MMDEBUG("        %d -> glyph %d", i, first_glyph);
-            logClusters[i-item->from] = first_glyph;
+            logClusters[i-item->item.pos] = first_glyph;
         }
         sstart = send;
         first_glyph += syllable.num_glyphs;
@@ -490,7 +488,6 @@ static bool myanmar_shape(QShaperItem *item)
     item->num_glyphs = first_glyph;
     return true;
 }
-#endif
 
 void HB_MyanmarAttributes(HB_Script /*script*/, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
 {

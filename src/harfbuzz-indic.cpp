@@ -1073,27 +1073,6 @@ static inline void splitMatra(unsigned short *reordered, int matra, int &len, in
     len++;
 }
 
-enum IndicProperties {
-    // these two are already defined
-//     CcmpProperty = 0x1,
-//     InitProperty = 0x2,
-    NuktaProperty = 0x4,
-    AkhantProperty = 0x8,
-    RephProperty = 0x10,
-    PreFormProperty = 0x20,
-    BelowFormProperty = 0x40,
-    AboveFormProperty = 0x80,
-    HalfFormProperty = 0x100,
-    PostFormProperty = 0x200,
-    VattuProperty = 0x400,
-    PreSubstProperty = 0x800,
-    BelowSubstProperty = 0x1000,
-    AboveSubstProperty = 0x2000,
-    PostSubstProperty = 0x4000,
-    HalantProperty = 0x8000,
-    CligProperty = 0x10000
-};
-
 #if 0
 #ifndef QT_NO_OPENTYPE
 static const QOpenType::Features indic_features[] = {
