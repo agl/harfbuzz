@@ -50,6 +50,7 @@ typedef struct {
 extern const HB_ScriptEngine hb_scriptEngines[];
 
 extern HB_Bool HB_TibetanShape(HB_ShaperItem *shaper_item);
+extern HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item);
 
 extern void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *string, uint32_t from, uint32_t len, HB_CharAttributes *attributes);
 
@@ -69,6 +70,16 @@ enum { PositioningProperties = 0x80000000 };
 void HB_SelectScript(HB_Face *face, HB_Script script, int flags, const HB_OpenTypeFeature *features);
 HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties);
 HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool doLogClusters);
+
+void HB_HeuristicPosition(HB_ShaperItem *item);
+void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item);
+
+inline bool HB_IsControlChar(HB_UChar16 uc)
+{
+    return (uc >= 0x200b && uc <= 0x200f /* ZW Space, ZWNJ, ZWJ, LRM and RLM */)
+            || (uc >= 0x2028 && uc <= 0x202f /* LS, PS, LRE, RLE, PDF, LRO, RLO, NNBSP */)
+            || (uc >= 0x206a && uc <= 0x206f /* ISS, ASS, IAFS, AFS, NADS, NODS */);
+}
 
 FT_END_HEADER
 

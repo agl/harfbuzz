@@ -265,6 +265,7 @@ typedef struct HB_Font_ HB_Font;
 typedef struct {
     HB_Bool (*stringToGlyphs)(HB_Font *font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, HB_Bool rightToLeft);
     void    (*getAdvances)(HB_Font *font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
+    HB_Bool (*canRender)(HB_Font *font, const HB_UChar16 *string, uint32_t length);
 } HB_FontClass;
 
 typedef struct HB_Font_ {

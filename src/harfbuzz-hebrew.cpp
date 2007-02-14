@@ -8,38 +8,48 @@
  *
  ******************************************************************/
 
-#if 0
+#include "harfbuzz-shaper.h"
+#include "harfbuzz-shaper-private.h"
+#include <assert.h>
+
+typedef enum {
+    CcmpProperty = 0x1
+};
+
 // Uniscribe also defines dlig for Hebrew, but we leave this out for now, as it's mostly
 // ligatures one does not want in modern Hebrew (as lam-alef ligatures).
-#ifndef QT_NO_OPENTYPE
-static const QOpenType::Features hebrew_features[] = {
+#ifndef NO_OPENTYPE
+static const HB_OpenTypeFeature hebrew_features[] = {
     { FT_MAKE_TAG('c', 'c', 'm', 'p'), CcmpProperty },
     {0, 0}
 };
 #endif
-#ifndef Q_WS_MAC
+
 /* Hebrew shaping. In the non opentype case we try to use the
    presentation forms specified for Hebrew. Especially for the
    ligatures with Dagesh this gives much better results than we could
    achieve manually.
 */
-static bool hebrew_shape(QShaperItem *item)
+HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
 {
-    Q_ASSERT(item->script == QUnicodeTables::Hebrew);
+    assert(shaper_item->item.script == HB_Script_Hebrew);
 
-#ifndef QT_NO_OPENTYPE
-    QOpenType *openType = item->font->openType();
 
-    if (openType && openType->supportsScript(item->script)) {
-        openType->selectScript(item, item->script, hebrew_features);
+#ifndef NO_OPENTYPE
+    if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
+        HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, hebrew_features);
 
-        const int availableGlyphs = item->num_glyphs;
-        if (!item->font->stringToCMap(item->string->unicode()+item->from, item->length, item->glyphs, &item->num_glyphs, QFlag(item->flags)))
+        const int availableGlyphs = shaper_item->num_glyphs;
+        if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+                                                      shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
+                                                      shaper_item->glyphs, &shaper_item->num_glyphs,
+                                                      shaper_item->item.bidiLevel % 2))
             return false;
 
-        heuristicSetGlyphAttributes(item);
-        openType->shape(item);
-        return openType->positionAndAdd(item, availableGlyphs);
+
+        HB_HeuristicSetGlyphAttributes(shaper_item);
+        HB_OpenTypeShape(shaper_item, /*properties*/0);
+        return HB_OpenTypePosition(shaper_item, availableGlyphs, /*doLogClusters*/true);
     }
 #endif
 
@@ -52,22 +62,22 @@ static bool hebrew_shape(QShaperItem *item)
         Holam = 0x5b9,
         Rafe = 0x5bf
     };
-    unsigned short chars[512];
-    QChar *shapedChars = item->length > 256 ? (QChar *)::malloc(2*item->length * sizeof(QChar)) : (QChar *)chars;
+    HB_UChar16 chars[512];
+    HB_UChar16 *shapedChars = shaper_item->item.length > 256 ? (HB_UChar16 *)::malloc(2*shaper_item->item.length * sizeof(HB_UChar16)) : chars;
 
-    const QChar *uc = item->string->unicode() + item->from;
-    unsigned short *logClusters = item->log_clusters;
-    QGlyphLayout *glyphs = item->glyphs;
+    const HB_UChar16 *uc = shaper_item->string + shaper_item->item.pos;
+    unsigned short *logClusters = shaper_item->log_clusters;
+    HB_GlyphAttributes *attributes = shaper_item->attributes;
 
     *shapedChars = *uc;
     logClusters[0] = 0;
     int slen = 1;
     int cluster_start = 0;
-    for (int i = 1; i < item->length; ++i) {
-        ushort base = shapedChars[slen-1].unicode();
+    for (int i = 1; i < shaper_item->item.length; ++i) {
+        ushort base = shapedChars[slen-1];
         ushort shaped = 0;
         bool invalid = false;
-        if (uc[i].unicode() == Dagesh) {
+        if (uc[i] == Dagesh) {
             if (base >= 0x5d0
                 && base <= 0x5ea
                 && base != 0x5d7
@@ -81,30 +91,30 @@ static bool hebrew_shape(QShaperItem *item)
             } else {
                 invalid = true;
             }
-        } else if (uc[i].unicode() == ShinDot) {
+        } else if (uc[i] == ShinDot) {
             if (base == 0x05e9)
                 shaped = 0xfb2a;
             else if (base == 0xfb49)
                 shaped = 0xfb2c;
             else
                 invalid = true;
-        } else if (uc[i].unicode() == SinDot) {
+        } else if (uc[i] == SinDot) {
             if (base == 0x05e9)
                 shaped = 0xfb2b;
             else if (base == 0xfb49)
                 shaped = 0xfb2d;
             else
                 invalid = true;
-        } else if (uc[i].unicode() == Patah) {
+        } else if (uc[i] == Patah) {
             if (base == 0x5d0)
                 shaped = 0xfb2e;
-        } else if (uc[i].unicode() == Qamats) {
+        } else if (uc[i] == Qamats) {
             if (base == 0x5d0)
                 shaped = 0xfb2f;
-        } else if (uc[i].unicode() == Holam) {
+        } else if (uc[i] == Holam) {
             if (base == 0x5d5)
                 shaped = 0xfb4b;
-        } else if (uc[i].unicode() == Rafe) {
+        } else if (uc[i] == Rafe) {
             if (base == 0x5d1)
                 shaped = 0xfb4c;
             else if (base == 0x5db)
@@ -115,52 +125,56 @@ static bool hebrew_shape(QShaperItem *item)
 
         if (invalid) {
             shapedChars[slen] = 0x25cc;
-            glyphs[slen].attributes.clusterStart = true;
-            glyphs[slen].attributes.mark = false;
-            glyphs[slen].attributes.combiningClass = 0;
+            attributes[slen].clusterStart = true;
+            attributes[slen].mark = false;
+            attributes[slen].combiningClass = 0;
             cluster_start = slen;
             ++slen;
         }
         if (shaped) {
-            if (item->font->canRender((QChar *)&shaped, 1)) {
-                shapedChars[slen-1] = QChar(shaped);
+            if (shaper_item->font->klass->canRender(shaper_item->font, (HB_UChar16 *)&shaped, 1)) {
+                shapedChars[slen-1] = shaped;
             } else
                 shaped = 0;
         }
         if (!shaped) {
             shapedChars[slen] = uc[i];
-            if (QChar::category(uc[i].unicode()) != QChar::Mark_NonSpacing) {
-                glyphs[slen].attributes.clusterStart = true;
-                glyphs[slen].attributes.mark = false;
-                glyphs[slen].attributes.combiningClass = 0;
-                glyphs[slen].attributes.dontPrint = qIsControlChar(uc[i].unicode());
+            HB_CharCategory category;
+            int cmb;
+            HB_GetUnicodeCharProperties(uc[i], &category, &cmb);
+            if (category != HB_Mark_NonSpacing) {
+                attributes[slen].clusterStart = true;
+                attributes[slen].mark = false;
+                attributes[slen].combiningClass = 0;
+                attributes[slen].dontPrint = HB_IsControlChar(uc[i]);
                 cluster_start = slen;
             } else {
-                glyphs[slen].attributes.clusterStart = false;
-                glyphs[slen].attributes.mark = true;
-                glyphs[slen].attributes.combiningClass = QChar::combiningClass(uc[i].unicode());
+                attributes[slen].clusterStart = false;
+                attributes[slen].mark = true;
+                attributes[slen].combiningClass = cmb;
             }
             ++slen;
         }
         logClusters[i] = cluster_start;
     }
 
-    if (!item->font->stringToCMap(shapedChars, slen, glyphs, &item->num_glyphs, QFlag(item->flags))) {
-        if (item->length > 256)
+    if (!shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+                                                  shapedChars, slen,
+                                                  shaper_item->glyphs, &shaper_item->num_glyphs,
+                                                  shaper_item->item.bidiLevel % 2)) {
+        if (shaper_item->item.length > 256)
             ::free(shapedChars);
         return false;
     }
-    for (int i = 0; i < item->num_glyphs; ++i) {
-        if (glyphs[i].attributes.mark) {
-            glyphs[i].advance.x = 0;
+    for (int i = 0; i < shaper_item->num_glyphs; ++i) {
+        if (shaper_item->attributes[i].mark) {
+            shaper_item->advances[i] = 0;
         }
     }
-    qt_heuristicPosition(item);
+    HB_HeuristicPosition(shaper_item);
 
-    if (item->length > 256)
+    if (shaper_item->item.length > 256)
         ::free(shapedChars);
     return true;
 }
-#endif
 
-#endif

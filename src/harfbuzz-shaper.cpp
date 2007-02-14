@@ -348,7 +348,7 @@ static inline void positionCluster(HB_ShaperItem *item, int gfrom,  int glast)
 #endif
 }
 
-static void heuristicPosition(HB_ShaperItem *item)
+void HB_HeuristicPosition(HB_ShaperItem *item)
 {
     HB_GlyphAttributes *attributes = item->attributes;
 
@@ -364,17 +364,10 @@ static void heuristicPosition(HB_ShaperItem *item)
     }
 }
 
-static inline bool isControlChar(HB_UChar16 uc)
-{
-    return (uc >= 0x200b && uc <= 0x200f /* ZW Space, ZWNJ, ZWJ, LRM and RLM */)
-            || (uc >= 0x2028 && uc <= 0x202f /* LS, PS, LRE, RLE, PDF, LRO, RLO, NNBSP */)
-            || (uc >= 0x206a && uc <= 0x206f /* ISS, ASS, IAFS, AFS, NADS, NODS */);
-}
-
 // set the glyph attributes heuristically. Assumes a 1 to 1 relationship between chars and glyphs
 // and no reordering.
 // also computes logClusters heuristically
-static void heuristicSetGlyphAttributes(HB_ShaperItem *item)
+void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item)
 {
     const HB_UChar16 *uc = item->string + item->item.pos;
     uint32_t length = item->item.length;
@@ -405,7 +398,7 @@ static void heuristicSetGlyphAttributes(HB_ShaperItem *item)
     const bool symbolFont = item->font->face.isSymbolFont;
     attributes[0].mark = false;
     attributes[0].clusterStart = true;
-    attributes[0].dontPrint = (!symbolFont && uc[0] == 0x00ad) || isControlChar(uc[0]);
+    attributes[0].dontPrint = (!symbolFont && uc[0] == 0x00ad) || HB_IsControlChar(uc[0]);
 
     int pos = 0;
     HB_CharCategory lastCat;
@@ -421,7 +414,7 @@ static void heuristicSetGlyphAttributes(HB_ShaperItem *item)
             ++pos;
         }
         // hide soft-hyphens by default
-        if ((!symbolFont && uc[i] == 0x00ad) || isControlChar(uc[i]))
+        if ((!symbolFont && uc[i] == 0x00ad) || HB_IsControlChar(uc[i]))
             attributes[pos].dontPrint = true;
         HB_CharCategory cat;
         int cmb;
@@ -510,22 +503,21 @@ static HB_Bool basic_shape(HB_ShaperItem *shaper_item)
                                            shaper_item->item.bidiLevel % 2))
         return false;
 
-    heuristicSetGlyphAttributes(shaper_item);
+    HB_HeuristicSetGlyphAttributes(shaper_item);
 
 #ifndef NO_OPENTYPE
     if (shaper_item->font->face.supported_scripts[shaper_item->item.script]) {
         HB_SelectScript(&shaper_item->font->face, shaper_item->item.script, shaper_item->shaperFlags, basic_features);
 
         HB_OpenTypeShape(shaper_item, /*properties*/0);
-        HB_OpenTypePosition(shaper_item, availableGlyphs, /*doLogClusters*/true);
+        return HB_OpenTypePosition(shaper_item, availableGlyphs, /*doLogClusters*/true);
     }
 #endif
 
-    heuristicPosition(shaper_item);
+    HB_HeuristicPosition(shaper_item);
     return true;
 }
 
-static HB_Bool hebrew_shape(HB_ShaperItem *) {}
 static HB_Bool arabic_shape(HB_ShaperItem *) {}
 static HB_Bool syriac_shape(HB_ShaperItem *) {}
 static HB_Bool thaana_shape(HB_ShaperItem *) {}
@@ -547,7 +539,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Armenian
     { basic_shape, 0},
     // Hebrew
-    { hebrew_shape, 0 },
+    { HB_HebrewShape, 0 },
     // Arabic
     { arabic_shape, 0},
     // Syriac
@@ -1045,7 +1037,7 @@ HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool do
         }
         item->kerning_applied = face->has_opentype_kerning;
     } else {
-        heuristicPosition(item);
+        HB_HeuristicPosition(item);
     }
 
 #ifdef OT_DEBUG
