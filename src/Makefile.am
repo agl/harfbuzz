@@ -8,6 +8,7 @@ noinst_LTLIBRARIES = libharfbuzz-1.la
 MAINSOURCES =  \
 	ftglue.c \
 	harfbuzz-buffer.c \
+	harfbuzz-stream.c \
 	harfbuzz-dump.c \
 	harfbuzz-gdef.c \
 	harfbuzz-gpos.c \
@@ -39,6 +40,7 @@ PUBLICHEADERS = \
 PRIVATEHEADERS = \
 	ftglue.h \
 	harfbuzz-impl.h \
+	harfbuzz-stream.h \
 	harfbuzz-gdef-private.h \
 	harfbuzz-gpos-private.h \
 	harfbuzz-gsub-private.h \

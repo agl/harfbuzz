@@ -81,7 +81,6 @@ typedef struct HB_LigCaretList_  HB_LigCaretList;
 
 struct  HB_GDEFHeader_
 {
-  FT_Memory            memory;
   FT_ULong             offset;
 
   FT_Fixed             Version;

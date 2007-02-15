@@ -4,6 +4,7 @@
  *  David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  *  Copyright 2006  Behdad Esfahbod
+ *  Copyright 2007  Trolltech ASA
  *
  *  This is part of HarfBuzz, an OpenType Layout engine library.
  *
@@ -31,37 +32,31 @@ struct  HB_SubTable_
 
 
 FT_Error  _HB_OPEN_Load_ScriptList( HB_ScriptList*  sl,
-			   FT_Stream     stream );
+			   HB_Stream     stream );
 FT_Error  _HB_OPEN_Load_FeatureList( HB_FeatureList*  fl,
-			    FT_Stream         input );
+			    HB_Stream         input );
 FT_Error  _HB_OPEN_Load_LookupList( HB_LookupList*  ll,
-			   FT_Stream        input,
+			   HB_Stream        input,
 			   HB_Type         type );
 
 FT_Error  _HB_OPEN_Load_Coverage( HB_Coverage*  c,
-			 FT_Stream      input );
+			 HB_Stream      input );
 FT_Error  _HB_OPEN_Load_ClassDefinition( HB_ClassDefinition*  cd,
 				FT_UShort             limit,
-				FT_Stream             input );
+				HB_Stream             input );
 FT_Error  _HB_OPEN_Load_EmptyClassDefinition( HB_ClassDefinition*  cd,
-				     FT_Stream             input );
+				     HB_Stream             input );
 FT_Error  _HB_OPEN_Load_Device( HB_Device*  d,
-		       FT_Stream    input );
+		       HB_Stream    input );
 
-void  _HB_OPEN_Free_ScriptList( HB_ScriptList*  sl, 
-		       FT_Memory        memory );
-void  _HB_OPEN_Free_FeatureList( HB_FeatureList*  fl,
-			FT_Memory         memory );
+void  _HB_OPEN_Free_ScriptList( HB_ScriptList*  sl);
+void  _HB_OPEN_Free_FeatureList( HB_FeatureList*  fl);
 void  _HB_OPEN_Free_LookupList( HB_LookupList*  ll,
-		       HB_Type         type,
-		       FT_Memory        memory );
+		       HB_Type         type );
 
-void  _HB_OPEN_Free_Coverage( HB_Coverage*  c,
-		     FT_Memory      memory );
-void  _HB_OPEN_Free_ClassDefinition( HB_ClassDefinition*  cd,
-			    FT_Memory             memory );
-void  _HB_OPEN_Free_Device( HB_Device*  d,
-		   FT_Memory    memory );
+void  _HB_OPEN_Free_Coverage( HB_Coverage*  c );
+void  _HB_OPEN_Free_ClassDefinition( HB_ClassDefinition*  cd );
+void  _HB_OPEN_Free_Device( HB_Device*  d );
 
 
 

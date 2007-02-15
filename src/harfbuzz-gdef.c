@@ -13,19 +13,17 @@
 #include "harfbuzz-impl.h"
 #include "harfbuzz-gdef-private.h"
 #include "harfbuzz-open-private.h"
+#include "harfbuzz-stream.h"
 
 static FT_Error  Load_AttachList( HB_AttachList*  al,
-				  FT_Stream        stream );
+				  HB_Stream        stream );
 static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
-				    FT_Stream          stream );
+				    HB_Stream          stream );
 
-static void  Free_AttachList( HB_AttachList*  al,
-			      FT_Memory        memory );
-static void  Free_LigCaretList( HB_LigCaretList*  lcl,
-				FT_Memory          memory );
+static void  Free_AttachList( HB_AttachList*  al);
+static void  Free_LigCaretList( HB_LigCaretList*  lcl);
 
-static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef,
-				   FT_Memory        memory );
+static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef);
 
 
 
@@ -89,12 +87,12 @@ static FT_Error  GDEF_Destroy( void*  ext,
 
   if ( gdef->loaded )
   {
-    Free_LigCaretList( &gdef->LigCaretList, memory );
-    Free_AttachList( &gdef->AttachList, memory );
-    _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef, memory );
-    _HB_OPEN_Free_ClassDefinition( &gdef->MarkAttachClassDef, memory );
+    Free_LigCaretList( &gdef->LigCaretList );
+    Free_AttachList( &gdef->AttachList );
+    _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef );
+    _HB_OPEN_Free_ClassDefinition( &gdef->MarkAttachClassDef );
 
-    Free_NewGlyphClasses( gdef, memory );
+    Free_NewGlyphClasses( gdef );
   }
 
   return FT_Err_Ok;
@@ -134,7 +132,6 @@ FT_Error  HB_New_GDEF_Table( FT_Face          face,
 			     HB_GDEFHeader** retptr )
 {
   FT_Error         error;
-  FT_Memory        memory = face->memory;
 
   HB_GDEFHeader*  gdef;
 
@@ -143,8 +140,6 @@ FT_Error  HB_New_GDEF_Table( FT_Face          face,
 
   if ( ALLOC( gdef, sizeof( *gdef ) ) )
     return error;
-
-  gdef->memory = face->memory;
 
   gdef->GlyphClassDef.loaded = FALSE;
   gdef->AttachList.loaded = FALSE;
@@ -165,8 +160,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
 			      HB_GDEFHeader** retptr )
 {
   FT_Error         error;
-  FT_Memory        memory = face->memory;
-  FT_Stream        stream = face->stream;
+  HB_Stream        stream = 0;
   FT_ULong         cur_offset, new_offset, base_offset;
 
   HB_GDEFHeader*  gdef;
@@ -175,7 +169,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
   if ( !retptr )
     return FT_Err_Invalid_Argument;
 
-  if (( error = _hb_ftglue_face_goto_table( face, TTAG_GDEF, stream ) ))
+  if (( error = HB_open_stream(face, TTAG_GDEF, &stream) ))
     return error;
 
   if (( error = HB_New_GDEF_Table ( face, &gdef ) ))
@@ -265,18 +259,20 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
 
   *retptr = gdef;
 
+  HB_close_stream(stream);
   return FT_Err_Ok;
 
 Fail3:
-  Free_LigCaretList( &gdef->LigCaretList, memory );
+  Free_LigCaretList( &gdef->LigCaretList );
   
 Fail2:
-  Free_AttachList( &gdef->AttachList, memory );
+  Free_AttachList( &gdef->AttachList );
 
 Fail1:
-  _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef, memory );
+  _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef );
 
 Fail0:
+  HB_close_stream(stream);
   FREE( gdef );
 
   return error;
@@ -284,15 +280,13 @@ Fail0:
 
 
 FT_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef ) 
-{
-  FT_Memory memory = gdef->memory;
+{  
+  Free_LigCaretList( &gdef->LigCaretList );
+  Free_AttachList( &gdef->AttachList );
+  _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef );
+  _HB_OPEN_Free_ClassDefinition( &gdef->MarkAttachClassDef );
   
-  Free_LigCaretList( &gdef->LigCaretList, memory );
-  Free_AttachList( &gdef->AttachList, memory );
-  _HB_OPEN_Free_ClassDefinition( &gdef->GlyphClassDef, memory );
-  _HB_OPEN_Free_ClassDefinition( &gdef->MarkAttachClassDef, memory );
-  
-  Free_NewGlyphClasses( gdef, memory );
+  Free_NewGlyphClasses( gdef );
 
   FREE( gdef );
 
@@ -310,9 +304,8 @@ FT_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef )
 /* AttachPoint */
 
 static FT_Error  Load_AttachPoint( HB_AttachPoint*  ap,
-				   FT_Stream         stream )
+				   HB_Stream         stream )
 {
-  FT_Memory memory = stream->memory;
   FT_Error  error;
 
   FT_UShort   n, count;
@@ -351,8 +344,7 @@ static FT_Error  Load_AttachPoint( HB_AttachPoint*  ap,
 }
 
 
-static void  Free_AttachPoint( HB_AttachPoint*  ap,
-			       FT_Memory        memory )
+static void  Free_AttachPoint( HB_AttachPoint*  ap )
 {
   FREE( ap->PointIndex );
 }
@@ -361,9 +353,8 @@ static void  Free_AttachPoint( HB_AttachPoint*  ap,
 /* AttachList */
 
 static FT_Error  Load_AttachList( HB_AttachList*  al,
-				  FT_Stream        stream )
+				  HB_Stream        stream )
 {
-  FT_Memory memory = stream->memory;
   FT_Error  error;
 
   FT_UShort         n, m, count;
@@ -423,18 +414,17 @@ static FT_Error  Load_AttachList( HB_AttachList*  al,
 
 Fail1:
   for ( m = 0; m < n; m++ )
-    Free_AttachPoint( &ap[m], memory );
+    Free_AttachPoint( &ap[m] );
 
   FREE( ap );
 
 Fail2:
-  _HB_OPEN_Free_Coverage( &al->Coverage, memory );
+  _HB_OPEN_Free_Coverage( &al->Coverage );
   return error;
 }
 
 
-static void  Free_AttachList( HB_AttachList*  al,
-			      FT_Memory        memory )
+static void  Free_AttachList( HB_AttachList*  al)
 {
   FT_UShort         n, count;
 
@@ -450,12 +440,12 @@ static void  Free_AttachList( HB_AttachList*  al,
     ap    = al->AttachPoint;
 
     for ( n = 0; n < count; n++ )
-      Free_AttachPoint( &ap[n], memory );
+      Free_AttachPoint( &ap[n] );
 
     FREE( ap );
   }
 
-  _HB_OPEN_Free_Coverage( &al->Coverage, memory );
+  _HB_OPEN_Free_Coverage( &al->Coverage );
 }
 
 
@@ -471,7 +461,7 @@ static void  Free_AttachList( HB_AttachList*  al,
 /* CaretValueFormat4 */
 
 static FT_Error  Load_CaretValue( HB_CaretValue*  cv,
-				  FT_Stream        stream )
+				  HB_Stream        stream )
 {
   FT_Error  error;
 
@@ -545,20 +535,18 @@ static FT_Error  Load_CaretValue( HB_CaretValue*  cv,
 }
 
 
-static void  Free_CaretValue( HB_CaretValue*  cv,
-			      FT_Memory        memory )
+static void  Free_CaretValue( HB_CaretValue*  cv)
 {
   if ( cv->CaretValueFormat == 3 )
-    _HB_OPEN_Free_Device( &cv->cvf.cvf3.Device, memory );
+    _HB_OPEN_Free_Device( &cv->cvf.cvf3.Device );
 }
 
 
 /* LigGlyph */
 
 static FT_Error  Load_LigGlyph( HB_LigGlyph*  lg,
-				FT_Stream      stream )
+				HB_Stream      stream )
 {
-  FT_Memory memory = stream->memory;
   FT_Error  error;
 
   FT_UShort        n, m, count;
@@ -603,15 +591,14 @@ static FT_Error  Load_LigGlyph( HB_LigGlyph*  lg,
 
 Fail:
   for ( m = 0; m < n; m++ )
-    Free_CaretValue( &cv[m], memory );
+    Free_CaretValue( &cv[m] );
 
   FREE( cv );
   return error;
 }
 
 
-static void  Free_LigGlyph( HB_LigGlyph*  lg,
-			    FT_Memory      memory )
+static void  Free_LigGlyph( HB_LigGlyph*  lg)
 {
   FT_UShort        n, count;
 
@@ -624,7 +611,7 @@ static void  Free_LigGlyph( HB_LigGlyph*  lg,
     cv    = lg->CaretValue;
 
     for ( n = 0; n < count; n++ )
-      Free_CaretValue( &cv[n], memory );
+      Free_CaretValue( &cv[n] );
 
     FREE( cv );
   }
@@ -634,9 +621,8 @@ static void  Free_LigGlyph( HB_LigGlyph*  lg,
 /* LigCaretList */
 
 static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
-				    FT_Stream          stream )
+				    HB_Stream          stream )
 {
-  FT_Memory memory = stream->memory;
   FT_Error  error;
 
   FT_UShort      m, n, count;
@@ -696,18 +682,17 @@ static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
 
 Fail1:
   for ( m = 0; m < n; m++ )
-    Free_LigGlyph( &lg[m], memory );
+    Free_LigGlyph( &lg[m] );
 
   FREE( lg );
 
 Fail2:
-  _HB_OPEN_Free_Coverage( &lcl->Coverage, memory );
+  _HB_OPEN_Free_Coverage( &lcl->Coverage );
   return error;
 }
 
 
-static void  Free_LigCaretList( HB_LigCaretList*  lcl,
-				FT_Memory           memory )
+static void  Free_LigCaretList( HB_LigCaretList*  lcl )
 {
   FT_UShort      n, count;
 
@@ -723,12 +708,12 @@ static void  Free_LigCaretList( HB_LigCaretList*  lcl,
     lg    = lcl->LigGlyph;
 
     for ( n = 0; n < count; n++ )
-      Free_LigGlyph( &lg[n], memory );
+      Free_LigGlyph( &lg[n] );
 
     FREE( lg );
   }
 
-  _HB_OPEN_Free_Coverage( &lcl->Coverage, memory );
+  _HB_OPEN_Free_Coverage( &lcl->Coverage );
 }
 
 
@@ -844,8 +829,7 @@ FT_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
 static FT_Error  Make_ClassRange( HB_ClassDefinition*  cd,
 				  FT_UShort             start,
 				  FT_UShort             end,
-				  FT_UShort             class,
-				  FT_Memory             memory )
+				  FT_UShort             class )
 {
   FT_Error               error;
   FT_UShort              index;
@@ -887,7 +871,6 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
   FT_UShort              start, curr_glyph, curr_class;
   FT_UShort              n, m, count;
   FT_Error               error;
-  FT_Memory              memory;
 
   HB_ClassDefinition*   gcd;
   HB_ClassRangeRecord*  gcrr;
@@ -897,7 +880,6 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
   if ( !gdef || !glyph_array || !class_array )
     return FT_Err_Invalid_Argument;
 
-  memory = gdef->memory;
   gcd = &gdef->GlyphClassDef;
 
   /* We build a format 2 table */
@@ -932,8 +914,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
       {
 	if ( ( error = Make_ClassRange( gcd, start,
 					curr_glyph,
-					curr_class,
-					memory ) ) != FT_Err_Ok )
+					curr_class) ) != FT_Err_Ok )
 	  goto Fail3;
       }
       else
@@ -951,8 +932,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
     {
       if ( ( error = Make_ClassRange( gcd, start,
 				      curr_glyph - 1,
-				      curr_class,
-				      memory ) ) != FT_Err_Ok )
+				      curr_class) ) != FT_Err_Ok )
 	goto Fail3;
 
       if ( curr_glyph > glyph_array[n] )
@@ -975,8 +955,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
       {
 	if ( ( error = Make_ClassRange( gcd, start,
 					curr_glyph,
-					curr_class,
-					memory ) ) != FT_Err_Ok )
+					curr_class) ) != FT_Err_Ok )
 	  goto Fail3;
       }
       else
@@ -1064,8 +1043,7 @@ Fail4:
 }
 
 
-static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef,
-				   FT_Memory        memory )
+static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef )
 {
   FT_UShort**  ngc;
   FT_UShort    n, count;

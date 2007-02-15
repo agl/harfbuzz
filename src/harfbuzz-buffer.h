@@ -48,7 +48,6 @@ typedef struct HB_PositionRec_ {
 
 
 typedef struct HB_BufferRec_{ 
-  FT_Memory   memory;
   FT_ULong    allocated;
 
   FT_ULong    in_length;
@@ -63,8 +62,7 @@ typedef struct HB_BufferRec_{
 } HB_BufferRec, *HB_Buffer;
 
 FT_Error
-hb_buffer_new( FT_Memory   memory,
-		HB_Buffer *buffer );
+hb_buffer_new(HB_Buffer *buffer );
 
 FT_Error
 hb_buffer_swap( HB_Buffer buffer );

@@ -172,6 +172,10 @@ typedef struct {
     int orig_nglyphs;
 } HB_FaceRec, *HB_Face;
 
+
+HB_Face HB_NewFace(FT_Face ftface);
+void HB_FreeFace(HB_Face face);
+
 typedef struct HB_Font_ *HB_Font;
 
 typedef struct {
@@ -203,9 +207,6 @@ typedef struct {
     // internal
     HB_Bool kerning_applied; // out: kerning applied by shaper
 } HB_ShaperItem;
-
-HB_Face HB_NewFace(FT_Face ftface);
-void HB_FreeFace(HB_Face face);
 
 HB_Bool HB_ShapeItem(HB_ShaperItem *item);
 

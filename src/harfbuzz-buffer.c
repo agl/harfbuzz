@@ -15,7 +15,6 @@ static FT_Error
 hb_buffer_ensure( HB_Buffer buffer,
 		   FT_ULong   size )
 {
-  FT_Memory memory = buffer->memory;
   FT_ULong new_allocated = buffer->allocated;
 
   if (size > new_allocated)
@@ -39,15 +38,13 @@ hb_buffer_ensure( HB_Buffer buffer,
 }
 
 FT_Error
-hb_buffer_new( FT_Memory   memory,
-		HB_Buffer *buffer )
+hb_buffer_new(HB_Buffer *buffer )
 {
   FT_Error error;
   
   if ( ALLOC( *buffer, sizeof( HB_BufferRec ) ) )
     return error;
 
-  (*buffer)->memory = memory;
   (*buffer)->in_length = 0;
   (*buffer)->out_length = 0;
   (*buffer)->allocated = 0;
@@ -83,8 +80,6 @@ hb_buffer_swap( HB_Buffer buffer )
 FT_Error
 hb_buffer_free( HB_Buffer buffer )
 {
-  FT_Memory memory = buffer->memory;
-
   FREE( buffer->in_string );
   FREE( buffer->out_string );
   FREE( buffer->positions );
