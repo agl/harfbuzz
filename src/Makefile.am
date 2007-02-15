@@ -32,6 +32,8 @@ PUBLICHEADERS = \
 	harfbuzz-gpos.h \
 	harfbuzz-gsub.h \
 	harfbuzz-open.h \
+	harfbuzz-global.h \
+	harfbuzz-external.h \
 	harfbuzz-shaper.h
 
 PRIVATEHEADERS = \
