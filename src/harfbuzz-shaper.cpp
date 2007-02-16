@@ -11,7 +11,7 @@
 #include "harfbuzz-shaper.h"
 #include "harfbuzz-shaper-private.h"
 
-#include "ftglue.h"
+#include "harfbuzz-global.h"
 #include <assert.h>
 
 // -----------------------------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ INCLUDES = 					\
 noinst_LTLIBRARIES = libharfbuzz-1.la
 
 MAINSOURCES =  \
-	ftglue.c \
+	harfbuzz-global.c \
 	harfbuzz-buffer.c \
 	harfbuzz-stream.c \
 	harfbuzz-dump.c \
@@ -38,7 +38,6 @@ PUBLICHEADERS = \
 	harfbuzz-shaper.h
 
 PRIVATEHEADERS = \
-	ftglue.h \
 	harfbuzz-impl.h \
 	harfbuzz-stream.h \
 	harfbuzz-gdef-private.h \

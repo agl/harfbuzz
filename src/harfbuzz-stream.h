@@ -13,6 +13,7 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <harfbuzz-global.h>
 
 FT_BEGIN_HEADER
 
@@ -25,15 +26,15 @@ typedef struct HB_StreamRec_
     FT_Byte*             cursor;
 } HB_StreamRec, *HB_Stream;
 
-FT_Error HB_open_stream(FT_Face face, FT_Tag tableTag, HB_Stream *stream);
+HB_Error HB_open_stream(FT_Face face, FT_Tag tableTag, HB_Stream *stream);
 void HB_close_stream(HB_Stream stream);
 
 
 /* stream macros used by the OpenType parser */
 #define  FILE_Pos()      stream->pos
-#define  FILE_Seek(pos)  SET_ERR( _hb_ftglue_stream_seek( stream, pos ) )
-#define  ACCESS_Frame(size)  SET_ERR( _hb_ftglue_stream_frame_enter( stream, size ) )
-#define  FORGET_Frame()      _hb_ftglue_stream_frame_exit( stream )
+#define  FILE_Seek(pos)  (error = (_hb_stream_seek( stream, pos )))
+#define  ACCESS_Frame(size)  (error = (_hb_stream_frame_enter( stream, size ))) != 0
+#define  FORGET_Frame()      _hb_stream_frame_exit( stream )
 
 #define  GET_Byte()      (*stream->cursor++)
 #define  GET_Short()     (stream->cursor += 2, (FT_Short)( \
@@ -53,14 +54,14 @@ void HB_close_stream(HB_Stream stream);
 #define  GET_ULong()     ((FT_ULong)GET_Long())
 #define  GET_Tag4()      GET_ULong()
 
-FT_Long _hb_ftglue_stream_pos( HB_Stream   stream );
+FT_Long _hb_stream_pos( HB_Stream   stream );
 
-FT_Error _hb_ftglue_stream_seek( HB_Stream   stream,
+HB_Error _hb_stream_seek( HB_Stream   stream,
                     FT_Long     pos );
 
-FT_Error _hb_ftglue_stream_frame_enter( HB_Stream   stream,
+HB_Error _hb_stream_frame_enter( HB_Stream   stream,
                            FT_ULong    size );
 
-void _hb_ftglue_stream_frame_exit( HB_Stream  stream );
+void _hb_stream_frame_exit( HB_Stream  stream );
 
 #endif

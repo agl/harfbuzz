@@ -61,25 +61,25 @@ typedef struct HB_BufferRec_{
   FT_UShort      max_ligID;
 } HB_BufferRec, *HB_Buffer;
 
-FT_Error
+HB_Error
 hb_buffer_new(HB_Buffer *buffer );
 
-FT_Error
+HB_Error
 hb_buffer_swap( HB_Buffer buffer );
 
-FT_Error
+HB_Error
 hb_buffer_free( HB_Buffer buffer );
 
-FT_Error
+HB_Error
 hb_buffer_clear( HB_Buffer buffer );
 
-FT_Error
+HB_Error
 hb_buffer_add_glyph( HB_Buffer buffer,
 		      FT_UInt    glyph_index,
 		      FT_UInt    properties,
 		      FT_UInt    cluster );
 
-FT_Error
+HB_Error
 hb_buffer_add_output_glyphs( HB_Buffer buffer,
 			      FT_UShort  num_in,
 			      FT_UShort  num_out,
@@ -87,13 +87,13 @@ hb_buffer_add_output_glyphs( HB_Buffer buffer,
 			      FT_UShort  component,
 			      FT_UShort  ligID );
 
-FT_Error
+HB_Error
 hb_buffer_add_output_glyph ( HB_Buffer buffer,
 			      FT_UInt    glyph_index,
 			      FT_UShort  component,
 			      FT_UShort  ligID );
 
-FT_Error
+HB_Error
 hb_buffer_copy_output_glyph ( HB_Buffer buffer );
 
 FT_UShort

@@ -15,9 +15,9 @@
 #include "harfbuzz-open-private.h"
 #include "harfbuzz-stream.h"
 
-static FT_Error  Load_AttachList( HB_AttachList*  al,
+static HB_Error  Load_AttachList( HB_AttachList*  al,
 				  HB_Stream        stream );
-static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
+static HB_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
 				    HB_Stream          stream );
 
 static void  Free_AttachList( HB_AttachList*  al);
@@ -35,7 +35,7 @@ static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef);
 #define GDEF_ID  Build_Extension_ID( 'G', 'D', 'E', 'F' )
 
 
-static FT_Error  GDEF_Create( void*  ext,
+static HB_Error  GDEF_Create( void*  ext,
 			      PFace  face )
 {
   DEFINE_LOAD_LOCALS( face->stream );
@@ -47,7 +47,7 @@ static FT_Error  GDEF_Create( void*  ext,
   /* by convention */
 
   if ( !gdef )
-    return FT_Err_Ok;
+    return HB_Err_Ok;
 
   /* a null offset indicates that there is no GDEF table */
 
@@ -57,7 +57,7 @@ static FT_Error  GDEF_Create( void*  ext,
 
   table = HB_LookUp_Table( face, TTAG_GDEF );
   if ( table < 0 )
-    return FT_Err_Ok;             /* The table is optional */
+    return HB_Err_Ok;             /* The table is optional */
 
   if ( FILE_Seek( face->dirTables[table].Offset ) ||
        ACCESS_Frame( 4L ) )
@@ -70,11 +70,11 @@ static FT_Error  GDEF_Create( void*  ext,
 
   gdef->loaded = FALSE;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
-static FT_Error  GDEF_Destroy( void*  ext,
+static HB_Error  GDEF_Destroy( void*  ext,
 			       PFace  face )
 {
   HB_GDEFHeader*  gdef = (HB_GDEFHeader*)ext;
@@ -83,7 +83,7 @@ static FT_Error  GDEF_Destroy( void*  ext,
   /* by convention */
 
   if ( !gdef )
-    return FT_Err_Ok;
+    return HB_Err_Ok;
 
   if ( gdef->loaded )
   {
@@ -95,18 +95,18 @@ static FT_Error  GDEF_Destroy( void*  ext,
     Free_NewGlyphClasses( gdef );
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
 
-FT_Error  HB_Init_GDEF_Extension( HB_Engine  engine )
+HB_Error  HB_Init_GDEF_Extension( HB_Engine  engine )
 {
   PEngine_Instance  _engine = HANDLE_Engine( engine );
 
 
   if ( !_engine )
-    return FT_Err_Invalid_Engine;
+    return HB_Err_Invalid_Engine;
 
   return  HB_Register_Extension( _engine,
 				 GDEF_ID,
@@ -128,15 +128,15 @@ FT_Error  HB_Init_GDEF_Extension( HB_Engine  engine )
 
 
 
-FT_Error  HB_New_GDEF_Table( FT_Face          face,
+HB_Error  HB_New_GDEF_Table( FT_Face          face,
 			     HB_GDEFHeader** retptr )
 {
-  FT_Error         error;
+  HB_Error         error;
 
   HB_GDEFHeader*  gdef;
 
   if ( !retptr )
-    return FT_Err_Invalid_Argument;
+    return HB_Err_Invalid_Argument;
 
   if ( ALLOC( gdef, sizeof( *gdef ) ) )
     return error;
@@ -152,14 +152,14 @@ FT_Error  HB_New_GDEF_Table( FT_Face          face,
 
   *retptr = gdef;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
-FT_Error  HB_Load_GDEF_Table( FT_Face          face,
+HB_Error  HB_Load_GDEF_Table( FT_Face          face,
 			      HB_GDEFHeader** retptr )
 {
-  FT_Error         error;
+  HB_Error         error;
   HB_Stream        stream = 0;
   FT_ULong         cur_offset, new_offset, base_offset;
 
@@ -167,7 +167,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
 
 
   if ( !retptr )
-    return FT_Err_Invalid_Argument;
+    return HB_Err_Invalid_Argument;
 
   if (( error = HB_open_stream(face, TTAG_GDEF, &stream) ))
     return error;
@@ -198,7 +198,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
 	 ( error = _HB_OPEN_Load_ClassDefinition( &gdef->GlyphClassDef, 5,
-					 stream ) ) != FT_Err_Ok )
+					 stream ) ) != HB_Err_Ok )
       goto Fail0;
     (void)FILE_Seek( cur_offset );
   }
@@ -217,7 +217,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
 	 ( error = Load_AttachList( &gdef->AttachList,
-				    stream ) ) != FT_Err_Ok )
+				    stream ) ) != HB_Err_Ok )
       goto Fail1;
     (void)FILE_Seek( cur_offset );
   }
@@ -236,7 +236,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
 	 ( error = Load_LigCaretList( &gdef->LigCaretList,
-				      stream ) ) != FT_Err_Ok )
+				      stream ) ) != HB_Err_Ok )
       goto Fail2;
     (void)FILE_Seek( cur_offset );
   }
@@ -260,7 +260,7 @@ FT_Error  HB_Load_GDEF_Table( FT_Face          face,
   *retptr = gdef;
 
   HB_close_stream(stream);
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 
 Fail3:
   Free_LigCaretList( &gdef->LigCaretList );
@@ -279,7 +279,7 @@ Fail0:
 }
 
 
-FT_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef ) 
+HB_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef ) 
 {  
   Free_LigCaretList( &gdef->LigCaretList );
   Free_AttachList( &gdef->AttachList );
@@ -290,7 +290,7 @@ FT_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef )
 
   FREE( gdef );
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
@@ -303,10 +303,10 @@ FT_Error  HB_Done_GDEF_Table ( HB_GDEFHeader* gdef )
 
 /* AttachPoint */
 
-static FT_Error  Load_AttachPoint( HB_AttachPoint*  ap,
+static HB_Error  Load_AttachPoint( HB_AttachPoint*  ap,
 				   HB_Stream         stream )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   FT_UShort   n, count;
   FT_UShort*  pi;
@@ -340,7 +340,7 @@ static FT_Error  Load_AttachPoint( HB_AttachPoint*  ap,
     FORGET_Frame();
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
@@ -352,10 +352,10 @@ static void  Free_AttachPoint( HB_AttachPoint*  ap )
 
 /* AttachList */
 
-static FT_Error  Load_AttachList( HB_AttachList*  al,
+static HB_Error  Load_AttachList( HB_AttachList*  al,
 				  HB_Stream        stream )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   FT_UShort         n, m, count;
   FT_ULong          cur_offset, new_offset, base_offset;
@@ -374,7 +374,7 @@ static FT_Error  Load_AttachList( HB_AttachList*  al,
 
   cur_offset = FILE_Pos();
   if ( FILE_Seek( new_offset ) ||
-       ( error = _HB_OPEN_Load_Coverage( &al->Coverage, stream ) ) != FT_Err_Ok )
+       ( error = _HB_OPEN_Load_Coverage( &al->Coverage, stream ) ) != HB_Err_Ok )
     return error;
   (void)FILE_Seek( cur_offset );
 
@@ -403,14 +403,14 @@ static FT_Error  Load_AttachList( HB_AttachList*  al,
 
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
-	 ( error = Load_AttachPoint( &ap[n], stream ) ) != FT_Err_Ok )
+	 ( error = Load_AttachPoint( &ap[n], stream ) ) != HB_Err_Ok )
       goto Fail1;
     (void)FILE_Seek( cur_offset );
   }
 
   al->loaded = TRUE;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 
 Fail1:
   for ( m = 0; m < n; m++ )
@@ -460,10 +460,10 @@ static void  Free_AttachList( HB_AttachList*  al)
 /* CaretValueFormat3 */
 /* CaretValueFormat4 */
 
-static FT_Error  Load_CaretValue( HB_CaretValue*  cv,
+static HB_Error  Load_CaretValue( HB_CaretValue*  cv,
 				  HB_Stream        stream )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   FT_ULong cur_offset, new_offset, base_offset;
 
@@ -512,7 +512,7 @@ static FT_Error  Load_CaretValue( HB_CaretValue*  cv,
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
 	 ( error = _HB_OPEN_Load_Device( &cv->cvf.cvf3.Device,
-				stream ) ) != FT_Err_Ok )
+				stream ) ) != HB_Err_Ok )
       return error;
     (void)FILE_Seek( cur_offset );
 
@@ -531,7 +531,7 @@ static FT_Error  Load_CaretValue( HB_CaretValue*  cv,
     return HB_Err_Invalid_GDEF_SubTable_Format;
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
@@ -544,10 +544,10 @@ static void  Free_CaretValue( HB_CaretValue*  cv)
 
 /* LigGlyph */
 
-static FT_Error  Load_LigGlyph( HB_LigGlyph*  lg,
+static HB_Error  Load_LigGlyph( HB_LigGlyph*  lg,
 				HB_Stream      stream )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   FT_UShort        n, m, count;
   FT_ULong         cur_offset, new_offset, base_offset;
@@ -582,12 +582,12 @@ static FT_Error  Load_LigGlyph( HB_LigGlyph*  lg,
 
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
-	 ( error = Load_CaretValue( &cv[n], stream ) ) != FT_Err_Ok )
+	 ( error = Load_CaretValue( &cv[n], stream ) ) != HB_Err_Ok )
       goto Fail;
     (void)FILE_Seek( cur_offset );
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 
 Fail:
   for ( m = 0; m < n; m++ )
@@ -620,10 +620,10 @@ static void  Free_LigGlyph( HB_LigGlyph*  lg)
 
 /* LigCaretList */
 
-static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
+static HB_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
 				    HB_Stream          stream )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   FT_UShort      m, n, count;
   FT_ULong       cur_offset, new_offset, base_offset;
@@ -642,7 +642,7 @@ static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
 
   cur_offset = FILE_Pos();
   if ( FILE_Seek( new_offset ) ||
-       ( error = _HB_OPEN_Load_Coverage( &lcl->Coverage, stream ) ) != FT_Err_Ok )
+       ( error = _HB_OPEN_Load_Coverage( &lcl->Coverage, stream ) ) != HB_Err_Ok )
     return error;
   (void)FILE_Seek( cur_offset );
 
@@ -671,14 +671,14 @@ static FT_Error  Load_LigCaretList( HB_LigCaretList*  lcl,
 
     cur_offset = FILE_Pos();
     if ( FILE_Seek( new_offset ) ||
-	 ( error = Load_LigGlyph( &lg[n], stream ) ) != FT_Err_Ok )
+	 ( error = Load_LigGlyph( &lg[n], stream ) ) != HB_Err_Ok )
       goto Fail1;
     (void)FILE_Seek( cur_offset );
   }
 
   lcl->loaded = TRUE;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 
 Fail1:
   for ( m = 0; m < n; m++ )
@@ -763,17 +763,17 @@ static FT_UShort  Get_New_Class( HB_GDEFHeader*  gdef,
 
 
 
-FT_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
+HB_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
 				      FT_UShort        glyphID,
 				      FT_UShort*       property )
 {
   FT_UShort class, index;
 
-  FT_Error  error;
+  HB_Error  error;
 
 
   if ( !gdef || !property )
-    return FT_Err_Invalid_Argument;
+    return HB_Err_Invalid_Argument;
 
   /* first, we check for mark attach classes */
 
@@ -785,7 +785,7 @@ FT_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
     if ( !error )
     {
       *property = class << 8;
-      return FT_Err_Ok;
+      return HB_Err_Ok;
     }
   }
 
@@ -822,16 +822,16 @@ FT_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
     break;
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
-static FT_Error  Make_ClassRange( HB_ClassDefinition*  cd,
+static HB_Error  Make_ClassRange( HB_ClassDefinition*  cd,
 				  FT_UShort             start,
 				  FT_UShort             end,
 				  FT_UShort             class )
 {
-  FT_Error               error;
+  HB_Error               error;
   FT_UShort              index;
 
   HB_ClassDefFormat2*   cdf2;
@@ -857,12 +857,12 @@ static FT_Error  Make_ClassRange( HB_ClassDefinition*  cd,
 
   cd->Defined[class] = TRUE;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
 
-FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
+HB_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 					 FT_UShort        num_glyphs,
 					 FT_UShort        glyph_count,
 					 FT_UShort*       glyph_array,
@@ -870,7 +870,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 {
   FT_UShort              start, curr_glyph, curr_class;
   FT_UShort              n, m, count;
-  FT_Error               error;
+  HB_Error               error;
 
   HB_ClassDefinition*   gcd;
   HB_ClassRangeRecord*  gcrr;
@@ -878,7 +878,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 
 
   if ( !gdef || !glyph_array || !class_array )
-    return FT_Err_Invalid_Argument;
+    return HB_Err_Invalid_Argument;
 
   gcd = &gdef->GlyphClassDef;
 
@@ -900,7 +900,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 
   if ( curr_class >= 5 )
   {
-    error = FT_Err_Invalid_Argument;
+    error = HB_Err_Invalid_Argument;
     goto Fail4;
   }
 
@@ -914,14 +914,14 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
       {
 	if ( ( error = Make_ClassRange( gcd, start,
 					curr_glyph,
-					curr_class) ) != FT_Err_Ok )
+					curr_class) ) != HB_Err_Ok )
 	  goto Fail3;
       }
       else
       {
 	if ( curr_glyph == 0xFFFF )
 	{
-	  error = FT_Err_Invalid_Argument;
+	  error = HB_Err_Invalid_Argument;
 	  goto Fail3;
 	}
 	else
@@ -932,12 +932,12 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
     {
       if ( ( error = Make_ClassRange( gcd, start,
 				      curr_glyph - 1,
-				      curr_class) ) != FT_Err_Ok )
+				      curr_class) ) != HB_Err_Ok )
 	goto Fail3;
 
       if ( curr_glyph > glyph_array[n] )
       {
-	error = FT_Err_Invalid_Argument;
+	error = HB_Err_Invalid_Argument;
 	goto Fail3;
       }
 
@@ -947,7 +947,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 
       if ( curr_class >= 5 )
       {
-	error = FT_Err_Invalid_Argument;
+	error = HB_Err_Invalid_Argument;
 	goto Fail3;
       }
 
@@ -955,14 +955,14 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
       {
 	if ( ( error = Make_ClassRange( gcd, start,
 					curr_glyph,
-					curr_class) ) != FT_Err_Ok )
+					curr_class) ) != HB_Err_Ok )
 	  goto Fail3;
       }
       else
       {
 	if ( curr_glyph == 0xFFFF )
 	{
-	  error = FT_Err_Invalid_Argument;
+	  error = HB_Err_Invalid_Argument;
 	  goto Fail3;
 	}
 	else
@@ -1025,7 +1025,7 @@ FT_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 
   gcd->loaded = TRUE;
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 
 Fail1:
   for ( m = 0; m < n; m++ )
@@ -1062,11 +1062,11 @@ static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef )
 }
 
 
-FT_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
+HB_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
 			      FT_UShort        glyphID,
 			      FT_UShort        property )
 {
-  FT_Error               error;
+  HB_Error               error;
   FT_UShort              class, new_class, index;
   FT_UShort              byte, bits, mask;
   FT_UShort              array_index, glyph_index, count;
@@ -1107,7 +1107,7 @@ FT_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
     break;
 
   default:
-    return FT_Err_Invalid_Argument;
+    return HB_Err_Invalid_Argument;
   }
 
   count = gdef->GlyphClassDef.cd.cd2.ClassRangeCount;
@@ -1143,16 +1143,16 @@ FT_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
     ngc[array_index][glyph_index / 4] |= bits;
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
-FT_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*  gdef,
+HB_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*  gdef,
 			  HB_GlyphItem    gitem,
 			  FT_UShort        flags,
 			  FT_UShort*       property )
 {
-  FT_Error  error;
+  HB_Error  error;
 
   if ( gdef )
   {
@@ -1199,7 +1199,7 @@ FT_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*  gdef,
       *property = 0;
   }
 
-  return FT_Err_Ok;
+  return HB_Err_Ok;
 }
 
 
