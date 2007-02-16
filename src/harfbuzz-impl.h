@@ -34,13 +34,13 @@ HB_BEGIN_HEADER
 #endif
 
 #ifndef TTAG_GDEF
-# define TTAG_GDEF  FT_MAKE_TAG( 'G', 'D', 'E', 'F' )
+# define TTAG_GDEF  HB_MAKE_TAG( 'G', 'D', 'E', 'F' )
 #endif
 #ifndef TTAG_GPOS
-# define TTAG_GPOS  FT_MAKE_TAG( 'G', 'P', 'O', 'S' )
+# define TTAG_GPOS  HB_MAKE_TAG( 'G', 'P', 'O', 'S' )
 #endif
 #ifndef TTAG_GSUB
-# define TTAG_GSUB  FT_MAKE_TAG( 'G', 'S', 'U', 'B' )
+# define TTAG_GSUB  HB_MAKE_TAG( 'G', 'S', 'U', 'B' )
 #endif
 
 #ifndef HB_UNUSED
