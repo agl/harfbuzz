@@ -11,22 +11,20 @@
 #ifndef HARFBUZZ_GLOBAL_H
 #define HARFBUZZ_GLOBAL_H
 
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#include <stdint.h>
-
 #ifdef __cplusplus
 #define HB_BEGIN_HEADER  extern "C" {
-#else
-#define HB_BEGIN_HEADER  /* nothing */
-#endif
-#ifdef __cplusplus
 #define HB_END_HEADER  }
 #else
+#define HB_BEGIN_HEADER  /* nothing */
 #define HB_END_HEADER  /* nothing */
 #endif
-
 
 HB_BEGIN_HEADER
 

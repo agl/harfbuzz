@@ -13,10 +13,6 @@
 #ifndef HARFBUZZ_IMPL_H
 #define HARFBUZZ_IMPL_H
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-#include FT_TRUETYPE_TAGS_H
-
 #include "harfbuzz-global.h"
 
 HB_BEGIN_HEADER
