@@ -64,9 +64,7 @@ HB_Error  HB_Load_GPOS_Table( HB_Stream stream,
 {
   HB_UInt         cur_offset, new_offset, base_offset;
 
-  HB_UShort        i, num_lookups;
   HB_GPOSHeader*  gpos;
-  HB_Lookup*      lo;
 
   HB_Error   error;
 

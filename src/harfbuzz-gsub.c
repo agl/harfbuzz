@@ -37,9 +37,7 @@ HB_Error  HB_Load_GSUB_Table( HB_Stream stream,
   HB_Error         error;
   HB_UInt         cur_offset, new_offset, base_offset;
 
-  HB_UShort        i, num_lookups;
   HB_GSUBHeader*  gsub;
-  HB_Lookup*      lo;
 
   if ( !retptr )
     return HB_Err_Invalid_Argument;
