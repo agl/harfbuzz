@@ -12,6 +12,7 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_TRUETYPE_TABLES_H
 
 #include <harfbuzz-shaper.h>
 
@@ -76,8 +77,33 @@ static HB_Bool hb_canRender(HB_Font font, const HB_UChar16 *string, uint32_t len
     return true;
 }
 
+static HB_Stream hb_getSFntTable(HB_Font font, HB_Tag tableTag)
+{
+    FT_Error error;
+    FT_ULong length = 0;
+    HB_Stream stream = 0;
+    
+    if ( !FT_IS_SFNT(font->face->freetypeFace) ) 
+        return 0;
+
+    error = FT_Load_Sfnt_Table(font->face->freetypeFace, tableTag, 0, 0, &length);
+    if (error)
+        return 0;
+    stream = (HB_Stream)malloc(sizeof(HB_StreamRec));
+    stream->base = (HB_Byte*)malloc(length);
+    error = FT_Load_Sfnt_Table(font->face->freetypeFace, tableTag, 0, stream->base, NULL);
+    if (error) {
+        HB_close_stream(stream);
+        return 0;
+    }
+    stream->size = length;
+    stream->pos = 0;
+    stream->cursor = NULL;
+    return stream;
+}
+
 const HB_FontClass hb_fontClass = {
-    hb_stringToGlyphs, hb_getAdvances, hb_canRender
+    hb_stringToGlyphs, hb_getAdvances, hb_canRender, hb_getSFntTable
 };
 
 
