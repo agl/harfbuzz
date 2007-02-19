@@ -230,7 +230,6 @@ void tst_QScriptEngine::devanagari()
     {
         FT_Face face = loadFace("raghu.ttf");
         if (face) {
-            QFont f("Raghindi");
 	    const ShapeTable shape_table [] = {
 		// Ka
 		{ { 0x0915, 0x0 },
@@ -279,7 +278,7 @@ void tst_QScriptEngine::devanagari()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Raghindi", SkipAll);
+	    QSKIP("couln't find raghu.ttf", SkipAll);
 	}
     }
 
@@ -333,7 +332,7 @@ void tst_QScriptEngine::devanagari()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couldn't find mangal", SkipAll);
+	    QSKIP("couldn't find mangal.ttf", SkipAll);
 	}
     }
 }
@@ -445,7 +444,7 @@ void tst_QScriptEngine::bengali()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Akaash", SkipAll);
+	    QSKIP("couln't find AkaashNormal.ttf", SkipAll);
 	}
     }
     {
@@ -552,7 +551,7 @@ void tst_QScriptEngine::bengali()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Mukti", SkipAll);
+	    QSKIP("couln't find MuktiNarrow.ttf", SkipAll);
 	}
     }
     {
@@ -582,7 +581,7 @@ void tst_QScriptEngine::bengali()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Likhan", SkipAll);
+	    QSKIP("couln't find LikhanNormal.ttf", SkipAll);
 	}
     }
 }
@@ -607,7 +606,7 @@ void tst_QScriptEngine::gurmukhi()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Lohit Punjabi", SkipAll);
+	    QSKIP("couln't find lohit.punjabi.1.1.ttf", SkipAll);
 	}
     }
 }
@@ -644,7 +643,7 @@ void tst_QScriptEngine::oriya()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find utkal", SkipAll);
+	    QSKIP("couln't find utkalm.ttf", SkipAll);
 	}
     }
 }
@@ -713,7 +712,7 @@ void tst_QScriptEngine::tamil()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find AkrutiTml1", SkipAll);
+	    QSKIP("couln't find akruti1.ttf", SkipAll);
 	}
     }
 }
@@ -757,7 +756,7 @@ void tst_QScriptEngine::telugu()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Pothana2000", SkipAll);
+	    QSKIP("couln't find Pothana2000.ttf", SkipAll);
 	}
     }
 }
@@ -802,7 +801,7 @@ void tst_QScriptEngine::kannada()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Sampige", SkipAll);
+	    QSKIP("couln't find Sampige.ttf", SkipAll);
 	}
     }
     {
@@ -826,7 +825,7 @@ void tst_QScriptEngine::kannada()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Tunga", SkipAll);
+	    QSKIP("couln't find tunga.ttf", SkipAll);
 	}
     }
 }
@@ -879,7 +878,7 @@ void tst_QScriptEngine::malayalam()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find AkrutiMal2", SkipAll);
+	    QSKIP("couln't find AkrutiMal2Normal.ttf", SkipAll);
 	}
     }
 }
@@ -922,7 +921,7 @@ void tst_QScriptEngine::khmer()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Khmer OS", SkipAll);
+	    QSKIP("couln't find KhmerOS.ttf", SkipAll);
 	}
     }
 }
@@ -947,7 +946,7 @@ void tst_QScriptEngine::linearB()
 
             FT_Done_Face(face);
 	} else {
-	    QSKIP("couln't find Penuturesu", SkipAll);
+	    QSKIP("couln't find PENUTURE.TTF", SkipAll);
 	}
     }
 }
