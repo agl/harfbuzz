@@ -20,7 +20,13 @@ static FT_Library freetype;
 static FT_Face loadFace(const char *name)
 {
     FT_Face face;
-    if (FT_New_Face(freetype, name, /*index*/0, &face))
+    char path[256];
+
+    strcpy(path, SRCDIR);
+    strcat(path, "/fonts/");
+    strcat(path, name);
+
+    if (FT_New_Face(freetype, path, /*index*/0, &face))
         return 0;
     return face;
 }
