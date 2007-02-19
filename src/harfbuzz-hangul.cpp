@@ -157,7 +157,7 @@ static bool hangul_shape_syllable(HB_ShaperItem *item, HB_Bool openType)
 #ifndef NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->klass->stringToGlyphs(item->font,
+    if (!item->face->font->klass->stringToGlyphs(item->face->font,
                                            ch, len,
                                            item->glyphs, &item->num_glyphs,
                                            item->item.bidiLevel % 2))

@@ -125,7 +125,7 @@ inline bool HB_IsControlChar(HB_UChar16 uc)
 
 inline HB_Bool HB_StringToGlyphs(HB_ShaperItem *shaper_item)
 {
-    return shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+    return shaper_item->face->font->klass->stringToGlyphs(shaper_item->face->font,
                                                     shaper_item->string + shaper_item->item.pos, shaper_item->item.length,
                                                     shaper_item->glyphs, &shaper_item->num_glyphs,
                                                     shaper_item->item.bidiLevel % 2);
@@ -133,7 +133,7 @@ inline HB_Bool HB_StringToGlyphs(HB_ShaperItem *shaper_item)
 
 inline void HB_GetAdvances(HB_ShaperItem *shaper_item)
 {
-    shaper_item->font->klass->getAdvances(shaper_item->font,
+    shaper_item->face->font->klass->getAdvances(shaper_item->face->font,
                                           shaper_item->glyphs, shaper_item->num_glyphs,
                                           shaper_item->advances);
 }

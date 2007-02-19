@@ -123,7 +123,7 @@ HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
             ++slen;
         }
         if (shaped) {
-            if (shaper_item->font->klass->canRender(shaper_item->font, (HB_UChar16 *)&shaped, 1)) {
+            if (shaper_item->face->font->klass->canRender(shaper_item->face->font, (HB_UChar16 *)&shaped, 1)) {
                 shapedChars[slen-1] = shaped;
             } else
                 shaped = 0;
@@ -149,7 +149,7 @@ HB_Bool HB_HebrewShape(HB_ShaperItem *shaper_item)
         logClusters[i] = cluster_start;
     }
 
-    HB_Bool haveGlyphs = shaper_item->font->klass->stringToGlyphs(shaper_item->font,
+    HB_Bool haveGlyphs = shaper_item->face->font->klass->stringToGlyphs(shaper_item->face->font,
                                                   shapedChars, slen,
                                                   shaper_item->glyphs, &shaper_item->num_glyphs,
                                                   shaper_item->item.bidiLevel % 2);

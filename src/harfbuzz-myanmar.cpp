@@ -382,7 +382,7 @@ static bool myanmar_shape_syllable(HB_Bool openType, HB_ShaperItem *item, bool i
 #ifndef NO_OPENTYPE
     const int availableGlyphs = item->num_glyphs;
 #endif
-    if (!item->font->klass->stringToGlyphs(item->font,
+    if (!item->face->font->klass->stringToGlyphs(item->face->font,
                                            reordered, len,
                                            item->glyphs, &item->num_glyphs,
                                            item->item.bidiLevel % 2))

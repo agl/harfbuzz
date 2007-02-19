@@ -53,7 +53,7 @@ static HB_Bool hb_stringToGlyphs(HB_Font font, const HB_UChar16 *string, uint32_
 
     int glyph_pos = 0;
     for (uint32_t i = 0; i < length; ++i) {
-        glyphs[glyph_pos] = FT_Get_Char_Index(font->face->freetypeFace, getChar(string, length, i));
+        glyphs[glyph_pos] = FT_Get_Char_Index(font->freetypeFace, getChar(string, length, i));
         ++glyph_pos;
     }
 
@@ -71,7 +71,7 @@ static void hb_getAdvances(HB_Font /*font*/, const HB_Glyph * /*glyphs*/, int nu
 static HB_Bool hb_canRender(HB_Font font, const HB_UChar16 *string, uint32_t length)
 {
     for (uint32_t i = 0; i < length; ++i)
-        if (!FT_Get_Char_Index(font->face->freetypeFace, getChar(string, length, i)))
+        if (!FT_Get_Char_Index(font->freetypeFace, getChar(string, length, i)))
             return false;
 
     return true;
@@ -83,15 +83,15 @@ static HB_Stream hb_getSFntTable(HB_Font font, HB_Tag tableTag)
     FT_ULong length = 0;
     HB_Stream stream = 0;
     
-    if ( !FT_IS_SFNT(font->face->freetypeFace) ) 
+    if ( !FT_IS_SFNT(font->freetypeFace) ) 
         return 0;
 
-    error = FT_Load_Sfnt_Table(font->face->freetypeFace, tableTag, 0, 0, &length);
+    error = FT_Load_Sfnt_Table(font->freetypeFace, tableTag, 0, 0, &length);
     if (error)
         return 0;
     stream = (HB_Stream)malloc(sizeof(HB_StreamRec));
     stream->base = (HB_Byte*)malloc(length);
-    error = FT_Load_Sfnt_Table(font->face->freetypeFace, tableTag, 0, stream->base, NULL);
+    error = FT_Load_Sfnt_Table(font->freetypeFace, tableTag, 0, stream->base, NULL);
     if (error) {
         HB_close_stream(stream);
         return 0;
@@ -165,12 +165,12 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
 {
     QString str = QString::fromUtf16( s->unicode );
 
-    HB_Face hbFace = HB_NewFace(face);
     HB_FontRec hbFont;
     hbFont.klass = &hb_fontClass;
     hbFont.userData = 0;
-    hbFont.face = hbFace;
+    hbFont.freetypeFace = face;
 
+    HB_Face hbFace = HB_NewFace(&hbFont);
     HB_ShaperItem shaper_item;
     shaper_item.kerning_applied = false;
     shaper_item.string = reinterpret_cast<const HB_UChar16 *>(str.constData());
@@ -180,7 +180,7 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
     shaper_item.item.length = shaper_item.stringLength;
     shaper_item.item.bidiLevel = 0; // ###
     shaper_item.shaperFlags = 0;
-    shaper_item.font = &hbFont;
+    shaper_item.face = hbFace;
     shaper_item.num_glyphs = shaper_item.item.length;
 
     QVarLengthArray<HB_Glyph> hb_glyphs(shaper_item.num_glyphs);

@@ -152,9 +152,10 @@ typedef struct {
     unsigned short combiningClass  :8;
 } HB_GlyphAttributes;
 
+typedef struct HB_Font_ *HB_Font;
 
 typedef struct {
-    FT_Face freetypeFace;
+    HB_Font font;
     HB_Bool isSymbolFont;
 
     HB_GDEF gdef;
@@ -173,10 +174,9 @@ typedef struct {
 } HB_FaceRec, *HB_Face;
 
 
-HB_Face HB_NewFace(FT_Face ftface);
+HB_Face HB_NewFace(HB_Font font);
 void HB_FreeFace(HB_Face face);
 
-typedef struct HB_Font_ *HB_Font;
 typedef struct HB_StreamRec_ *HB_Stream;
 
 typedef struct {
@@ -188,7 +188,7 @@ typedef struct {
 
 typedef struct HB_Font_ {
     const HB_FontClass *klass;
-    HB_Face face;
+    FT_Face freetypeFace;
     void *userData;
 } HB_FontRec, *HB_Font;
 
@@ -196,7 +196,7 @@ typedef struct {
     const HB_UChar16 *string;
     uint32_t stringLength;
     HB_ScriptItem item;
-    HB_Font font;
+    HB_Face face;
     int shaperFlags; // HB_ShaperFlags
 
     uint32_t num_glyphs; // in: available glyphs out: glyphs used/needed
