@@ -180,7 +180,7 @@ typedef struct HB_StreamRec_ *HB_Stream;
 
 typedef struct {
     HB_Bool (*stringToGlyphs)(HB_Font font, const HB_UChar16 *string, uint32_t length, HB_Glyph *glyphs, uint32_t *numGlyphs, HB_Bool rightToLeft);
-    void    (*getAdvances)(HB_Font font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances);
+    void    (*getAdvances)(HB_Font font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances, int flags /*HB_ShaperFlag*/);
     HB_Bool (*canRender)(HB_Font font, const HB_UChar16 *string, uint32_t length);
     HB_Stream (*getSFntTable)(HB_Font font, HB_Tag tag);
 } HB_FontClass;
