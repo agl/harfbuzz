@@ -169,8 +169,8 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
     hbFont.klass = &hb_fontClass;
     hbFont.userData = 0;
     hbFont.freetypeFace = face;
-    hbFont.face = 0;
-    hbFont.face = HB_NewFace(&hbFont);
+
+    HB_Face hbFace = HB_NewFace(&hbFont);
 
     HB_ShaperItem shaper_item;
     shaper_item.kerning_applied = false;
@@ -182,6 +182,7 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
     shaper_item.item.bidiLevel = 0; // ###
     shaper_item.shaperFlags = 0;
     shaper_item.font = &hbFont;
+    shaper_item.face = hbFace;
     shaper_item.num_glyphs = shaper_item.item.length;
 
     QVarLengthArray<HB_Glyph> hb_glyphs(shaper_item.num_glyphs);
@@ -213,7 +214,7 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
 
     }
 
-    HB_FreeFace(hbFont.face);
+    HB_FreeFace(hbFace);
 
     uint32_t nglyphs = 0;
     const unsigned short *g = s->glyphs;
