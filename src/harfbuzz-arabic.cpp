@@ -1036,7 +1036,7 @@ HB_Bool HB_ArabicShape(HB_ShaperItem *item)
                   item->item.bidiLevel % 2,
                   item->attributes, item->log_clusters);
 
-    HB_Bool haveGlyphs = item->face->font->klass->stringToGlyphs(item->face->font,
+    HB_Bool haveGlyphs = item->font->klass->stringToGlyphs(item->font,
                                                            shapedChars, slen,
                                                            item->glyphs, &item->num_glyphs,
                                                            item->item.bidiLevel % 2);

@@ -155,7 +155,6 @@ typedef struct {
 typedef struct HB_Font_ *HB_Font;
 
 typedef struct {
-    HB_Font font;
     HB_Bool isSymbolFont;
 
     HB_GDEF gdef;
@@ -189,6 +188,7 @@ typedef struct {
 typedef struct HB_Font_ {
     const HB_FontClass *klass;
     FT_Face freetypeFace;
+    HB_Face face;
     void *userData;
 } HB_FontRec, *HB_Font;
 
@@ -196,7 +196,7 @@ typedef struct {
     const HB_UChar16 *string;
     uint32_t stringLength;
     HB_ScriptItem item;
-    HB_Face face;
+    HB_Font font;
     int shaperFlags; // HB_ShaperFlags
 
     uint32_t num_glyphs; // in: available glyphs out: glyphs used/needed

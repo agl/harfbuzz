@@ -400,7 +400,7 @@ void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item)
 
     // first char in a run is never (treated as) a mark
     int cStart = 0;
-    const bool symbolFont = item->face->isSymbolFont;
+    const bool symbolFont = item->font->face->isSymbolFont;
     attributes[0].mark = false;
     attributes[0].clusterStart = true;
     attributes[0].dontPrint = (!symbolFont && uc[0] == 0x00ad) || HB_IsControlChar(uc[0]);
@@ -725,7 +725,6 @@ HB_Face HB_NewFace(HB_Font font)
 {
     HB_Face face = (HB_Face )malloc(sizeof(HB_FaceRec));
 
-    face->font = font;
     face->isSymbolFont = false;
     face->gdef = 0;
     face->gpos = 0;
@@ -797,10 +796,10 @@ HB_Bool HB_SelectScript(HB_ShaperItem *shaper_item, const HB_OpenTypeFeature *fe
 {
     HB_Script script = shaper_item->item.script;
 
-    if (!shaper_item->face->supported_scripts[script])
+    if (!shaper_item->font->face->supported_scripts[script])
         return false;
 
-    HB_Face face = shaper_item->face;
+    HB_Face face = shaper_item->font->face;
     if (face->current_script == script && face->current_flags == shaper_item->shaperFlags)
         return true;
 
@@ -890,7 +889,7 @@ HB_Bool HB_SelectScript(HB_ShaperItem *shaper_item, const HB_OpenTypeFeature *fe
 HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties)
 {
 
-    HB_Face face = item->face;
+    HB_Face face = item->font->face;
 
     face->length = item->num_glyphs;
 
@@ -939,14 +938,14 @@ HB_Bool HB_OpenTypeShape(HB_ShaperItem *item, const uint32_t *properties)
 
 HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool doLogClusters)
 {
-    HB_Face face = item->face;
+    HB_Face face = item->font->face;
 
     bool glyphs_positioned = false;
     if (face->gpos) {
         memset(face->buffer->positions, 0, face->buffer->in_length*sizeof(HB_PositionRec));
         int loadFlags = (face->current_flags & HB_ShaperFlag_UseDesignMetrics) ? FT_LOAD_NO_HINTING : FT_LOAD_DEFAULT;
         // #### check that passing "false,false" is correct
-        glyphs_positioned = HB_GPOS_Apply_String(face->font->freetypeFace, face->gpos, loadFlags, face->buffer, false, false) != HB_Err_Not_Covered;
+        glyphs_positioned = HB_GPOS_Apply_String(item->font->freetypeFace, face->gpos, loadFlags, face->buffer, false, false) != HB_Err_Not_Covered;
     }
 
     if (!face->glyphs_substituted && !glyphs_positioned) {
