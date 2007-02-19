@@ -10,7 +10,6 @@
 
 #include <QtTest/QtTest>
 
-#include <fontconfig/fontconfig.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
@@ -18,52 +17,11 @@
 
 static FT_Library freetype;
 
-static FT_Face loadFace(const char *fontPattern)
+static FT_Face loadFace(const char *name)
 {
-    FcPattern *pattern;
-    FcPattern *match;
-    FcFontSet *fontset;
-    FcResult  result;
-    FcChar8   *file;
-    int       index;
-    FT_Face   face;
-
-    pattern = FcNameParse((const FcChar8 *)fontPattern);
-    FcConfigSubstitute(0, pattern, FcMatchPattern);
-    FcDefaultSubstitute(pattern);
-
-    match = FcFontMatch(0, pattern, &result);
-    if (!match) {
-        qDebug("Cannot find font for pattern %s\n", fontPattern);
+    FT_Face face;
+    if (FT_New_Face(freetype, name, /*index*/0, &face))
         return 0;
-    }
-
-    fontset = FcFontSetCreate();
-    FcFontSetAdd(fontset, match);
-
-    if (fontset->nfont < 1) {
-        qDebug("Fontset is empty?!\n");
-        return 0;
-    }
-
-    if (FcPatternGetString(fontset->fonts[0], FC_FILE, 0, &file) != FcResultMatch) {
-        qDebug("Cannot get font filename\n");
-        return 0;
-    }
-
-    if (FcPatternGetInteger(fontset->fonts[0], FC_INDEX, 0, &index) != FcResultMatch) {
-        qDebug("Cannot get index in font\n");
-        return 0;
-    }
-
-    if (FT_New_Face(freetype, (const char *)file, index, &face)) {
-        qDebug("Cannot open font\n");
-        return 0;
-    }
-
-    FcPatternDestroy(pattern);
-    FcFontSetDestroy(fontset);
-
     return face;
 }
 
@@ -159,13 +117,11 @@ tst_QScriptEngine::~tst_QScriptEngine()
 void tst_QScriptEngine::initTestCase()
 {
     FT_Init_FreeType(&freetype);
-    FcInit();
 }
 
 void tst_QScriptEngine::cleanupTestCase()
 {
     FT_Done_FreeType(freetype);
-    FcFini();
 }
 
 struct ShapeTable {
@@ -266,7 +222,7 @@ static bool shaping(FT_Face face, const ShapeTable *s, HB_Script script)
 void tst_QScriptEngine::devanagari()
 {
     {
-        FT_Face face = loadFace("Raghindi");
+        FT_Face face = loadFace("raghu.ttf");
         if (face) {
             QFont f("Raghindi");
 	    const ShapeTable shape_table [] = {
@@ -322,7 +278,7 @@ void tst_QScriptEngine::devanagari()
     }
 
     {
-        FT_Face face = loadFace("Mangal");
+        FT_Face face = loadFace("mangal.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		// Ka
@@ -379,7 +335,7 @@ void tst_QScriptEngine::devanagari()
 void tst_QScriptEngine::bengali()
 {
     {
-        FT_Face face = loadFace("Akaash");
+        FT_Face face = loadFace("AkaashNormal.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		// Ka
@@ -487,7 +443,7 @@ void tst_QScriptEngine::bengali()
 	}
     }
     {
-        FT_Face face = loadFace("Mukti Narrow");
+        FT_Face face = loadFace("MuktiNarrow.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		// Ka
@@ -594,7 +550,7 @@ void tst_QScriptEngine::bengali()
 	}
     }
     {
-        FT_Face face = loadFace("Likhan");
+        FT_Face face = loadFace("LikhanNormal.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x09a8, 0x09cd, 0x09af, 0x0 },
@@ -628,7 +584,7 @@ void tst_QScriptEngine::bengali()
 void tst_QScriptEngine::gurmukhi()
 {
     {
-        FT_Face face = loadFace("Lohit Punjabi");
+        FT_Face face = loadFace("lohit.punjabi.1.1.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0xA15, 0xA4D, 0xa39, 0x0 },
@@ -653,7 +609,7 @@ void tst_QScriptEngine::gurmukhi()
 void tst_QScriptEngine::oriya()
 {
     {
-        FT_Face face = loadFace("utkal");
+        FT_Face face = loadFace("utkalm.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
                 { { 0xb15, 0xb4d, 0xb24, 0xb4d, 0xb30, 0x0 },
@@ -691,7 +647,7 @@ void tst_QScriptEngine::oriya()
 void tst_QScriptEngine::tamil()
 {
     {
-        FT_Face face = loadFace("AkrutiTml1");
+        FT_Face face = loadFace("akruti1.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x0b95, 0x0bc2, 0x0 },
@@ -760,7 +716,7 @@ void tst_QScriptEngine::tamil()
 void tst_QScriptEngine::telugu()
 {
     {
-        FT_Face face = loadFace("Pothana2000");
+        FT_Face face = loadFace("Pothana2000.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
                 { { 0xc15, 0xc4d, 0x0 },
@@ -804,7 +760,7 @@ void tst_QScriptEngine::telugu()
 void tst_QScriptEngine::kannada()
 {
     {
-        FT_Face face = loadFace("Sampige");
+        FT_Face face = loadFace("Sampige.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x0ca8, 0x0ccd, 0x0ca8, 0x0 },
@@ -844,7 +800,7 @@ void tst_QScriptEngine::kannada()
 	}
     }
     {
-        FT_Face face = loadFace("Tunga");
+        FT_Face face = loadFace("tunga.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x0cb7, 0x0cc6, 0x0 },
@@ -874,7 +830,7 @@ void tst_QScriptEngine::kannada()
 void tst_QScriptEngine::malayalam()
 {
     {
-        FT_Face face = loadFace("AkrutiMal2");
+        FT_Face face = loadFace("AkrutiMal2Normal.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x0d15, 0x0d46, 0x0 },
@@ -927,7 +883,7 @@ void tst_QScriptEngine::malayalam()
 void tst_QScriptEngine::khmer()
 {
     {
-        FT_Face face = loadFace("Khmer OS");
+        FT_Face face = loadFace("KhmerOS.ttf");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0x179a, 0x17cd, 0x0 },
@@ -968,7 +924,7 @@ void tst_QScriptEngine::khmer()
 void tst_QScriptEngine::linearB()
 {
     {
-        FT_Face face = loadFace("Penuturesu");
+        FT_Face face = loadFace("PENUTURE.TTF");
         if (face) {
 	    const ShapeTable shape_table [] = {
 		{ { 0xd800, 0xdc01, 0xd800, 0xdc02, 0xd800, 0xdc03,  0 },
