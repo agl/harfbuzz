@@ -104,9 +104,11 @@ static HB_Stream hb_getSFntTable(HB_Font font, HB_Tag tableTag)
     return stream;
 }
 
-HB_Error hb_getPointInOutline(HB_Font font, HB_Glyph glyph, int load_flags, uint32_t point, HB_Fixed *xpos, HB_Fixed *ypos, uint32_t *nPoints)
+HB_Error hb_getPointInOutline(HB_Font font, HB_Glyph glyph, int flags, uint32_t point, HB_Fixed *xpos, HB_Fixed *ypos, uint32_t *nPoints)
 {
     HB_Error error = HB_Err_Ok;
+
+    int load_flags = (flags & HB_ShaperFlag_UseDesignMetrics) ? FT_LOAD_NO_HINTING : FT_LOAD_DEFAULT;
 
     if ((error = (HB_Error)FT_Load_Glyph(font->freetypeFace, glyph, load_flags)))
         return error;

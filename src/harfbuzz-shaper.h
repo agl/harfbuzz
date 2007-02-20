@@ -179,7 +179,8 @@ typedef struct {
     void    (*getAdvances)(HB_Font font, const HB_Glyph *glyphs, int numGlyphs, HB_Fixed *advances, int flags /*HB_ShaperFlag*/);
     HB_Bool (*canRender)(HB_Font font, const HB_UChar16 *string, uint32_t length);
     HB_Stream (*getSFntTable)(HB_Font font, HB_Tag tag);
-    HB_Error (*getPointInOutline)(HB_Font font, HB_Glyph glyph, int load_flags, uint32_t point, HB_Fixed *xpos, HB_Fixed *ypos, uint32_t *nPoints);
+    /* implementation needs to make sure to load a scaled glyph, so /no/ FT_LOAD_NO_SCALE */
+    HB_Error (*getPointInOutline)(HB_Font font, HB_Glyph glyph, int flags /*HB_ShaperFlag*/, uint32_t point, HB_Fixed *xpos, HB_Fixed *ypos, uint32_t *nPoints);
 } HB_FontClass;
 
 typedef struct HB_Font_ {
