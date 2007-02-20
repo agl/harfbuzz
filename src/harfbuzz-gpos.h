@@ -64,7 +64,7 @@ typedef FT_Error  (*HB_GlyphFunction)(FT_Face      face,
    `metric_value' must be returned as a scaled value (but shouldn't
    be rounded).                                                       */
 
-typedef HB_Error  (*HB_MMFunction)(FT_Face      face,
+typedef HB_Error  (*HB_MMFunction)(HB_Font       font,
 				    HB_UShort    metric_id,
 				    HB_Fixed*      metric_value,
 				    void*        data );

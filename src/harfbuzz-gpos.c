@@ -45,12 +45,12 @@ static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
 /* the client application must replace this with something more
    meaningful if multiple master fonts are to be supported.     */
 
-static HB_Error  default_mmfunc( FT_Face      face,
+static HB_Error  default_mmfunc( HB_Font      font,
 				 HB_UShort    metric_id,
 				 HB_Fixed*      metric_value,
 				 void*        data )
 {
-  HB_UNUSED(face);
+  HB_UNUSED(font);
   HB_UNUSED(metric_id);
   HB_UNUSED(metric_value);
   HB_UNUSED(data);
@@ -510,7 +510,7 @@ static HB_Error  Get_ValueRecord( GPOS_Instance*    gpi,
 
   if ( format & HB_GPOS_FORMAT_HAVE_X_ID_PLACEMENT )
   {
-    error = (gpos->mmfunc)( gpi->face, vr->XIdPlacement,
+    error = (gpos->mmfunc)( gpi->font, vr->XIdPlacement,
 			    &value, gpos->data );
     if ( error )
       return error;
@@ -518,7 +518,7 @@ static HB_Error  Get_ValueRecord( GPOS_Instance*    gpi,
   }
   if ( format & HB_GPOS_FORMAT_HAVE_Y_ID_PLACEMENT )
   {
-    error = (gpos->mmfunc)( gpi->face, vr->YIdPlacement,
+    error = (gpos->mmfunc)( gpi->font, vr->YIdPlacement,
 			    &value, gpos->data );
     if ( error )
       return error;
@@ -526,7 +526,7 @@ static HB_Error  Get_ValueRecord( GPOS_Instance*    gpi,
   }
   if ( format & HB_GPOS_FORMAT_HAVE_X_ID_ADVANCE )
   {
-    error = (gpos->mmfunc)( gpi->face, vr->XIdAdvance,
+    error = (gpos->mmfunc)( gpi->font, vr->XIdAdvance,
 			    &value, gpos->data );
     if ( error )
       return error;
@@ -534,7 +534,7 @@ static HB_Error  Get_ValueRecord( GPOS_Instance*    gpi,
   }
   if ( format & HB_GPOS_FORMAT_HAVE_Y_ID_ADVANCE )
   {
-    error = (gpos->mmfunc)( gpi->face, vr->YIdAdvance,
+    error = (gpos->mmfunc)( gpi->font, vr->YIdAdvance,
 			    &value, gpos->data );
     if ( error )
       return error;
@@ -753,12 +753,12 @@ static HB_Error  Get_Anchor( GPOS_Instance*   gpi,
     break;
 
   case 4:
-    error = (gpos->mmfunc)( gpi->face, an->af.af4.XIdAnchor,
+    error = (gpos->mmfunc)( gpi->font, an->af.af4.XIdAnchor,
 			    x_value, gpos->data );
     if ( error )
       return error;
 
-    error = (gpos->mmfunc)( gpi->face, an->af.af4.YIdAnchor,
+    error = (gpos->mmfunc)( gpi->font, an->af.af4.YIdAnchor,
 			    y_value, gpos->data );
     if ( error )
       return error;
