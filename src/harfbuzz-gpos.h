@@ -146,8 +146,7 @@ HB_Error  HB_GPOS_Register_MM_Function( HB_GPOSHeader*  gpos,
    tables are ignored -- you will get device independent values.         */
 
 
-HB_Error  HB_GPOS_Apply_String( FT_Face           face,
-				HB_Font           font,
+HB_Error  HB_GPOS_Apply_String( HB_Font           font,
 				HB_GPOSHeader*   gpos,
 				HB_UShort         load_flags,
 				HB_Buffer        buffer,

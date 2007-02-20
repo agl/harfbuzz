@@ -19,7 +19,6 @@
 struct  GPOS_Instance_
 {
   HB_GPOSHeader*  gpos;
-  FT_Face          face;
   HB_Font          font;
   HB_Bool          dvi;
   HB_UShort        load_flags;  /* how the glyph should be loaded */
@@ -464,10 +463,10 @@ static HB_Error  Get_ValueRecord( GPOS_Instance*    gpi,
   if ( !format )
     return HB_Err_Ok;
 
-  x_ppem  = gpi->face->size->metrics.x_ppem;
-  y_ppem  = gpi->face->size->metrics.y_ppem;
-  x_scale = gpi->face->size->metrics.x_scale;
-  y_scale = gpi->face->size->metrics.y_scale;
+  x_ppem  = gpi->font->x_ppem;
+  y_ppem  = gpi->font->y_ppem;
+  x_scale = gpi->font->x_scale;
+  y_scale = gpi->font->y_scale;
 
   /* design units -> fractional pixel */
 
@@ -694,10 +693,10 @@ static HB_Error  Get_Anchor( GPOS_Instance*   gpi,
   HB_16Dot16         x_scale, y_scale;
 
 
-  x_ppem  = gpi->face->size->metrics.x_ppem;
-  y_ppem  = gpi->face->size->metrics.y_ppem;
-  x_scale = gpi->face->size->metrics.x_scale;
-  y_scale = gpi->face->size->metrics.y_scale;
+  x_ppem  = gpi->font->x_ppem;
+  y_ppem  = gpi->font->y_ppem;
+  x_scale = gpi->font->x_scale;
+  y_scale = gpi->font->y_scale;
 
   switch ( an->PosFormat )
   {
@@ -6115,8 +6114,7 @@ HB_Error  HB_GPOS_Register_MM_Function( HB_GPOSHeader*  gpos,
    tables are ignored -- you will get device independent values.         */
 
 
-HB_Error  HB_GPOS_Apply_String( FT_Face            face,
-				HB_Font            font,
+HB_Error  HB_GPOS_Apply_String( HB_Font            font,
 				HB_GPOSHeader*    gpos,
 				HB_UShort          load_flags,
 				HB_Buffer         buffer,
@@ -6128,11 +6126,10 @@ HB_Error  HB_GPOS_Apply_String( FT_Face            face,
   HB_UShort      i, j, feature_index, lookup_count;
   HB_Feature    feature;
 
-  if ( !face || !gpos ||
+  if ( !font || !gpos ||
        !buffer || buffer->in_length == 0 || buffer->in_pos >= buffer->in_length )
     return HB_Err_Invalid_Argument;
 
-  gpi.face       = face;
   gpi.font       = font;
   gpi.gpos       = gpos;
   gpi.load_flags = load_flags;
