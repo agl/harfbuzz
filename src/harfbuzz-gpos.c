@@ -83,7 +83,6 @@ HB_Error  HB_Load_GPOS_Table( HB_Stream stream,
   if ( ALLOC ( gpos, sizeof( *gpos ) ) )
     return error;
 
-  gpos->gfunc = FT_Load_Glyph;
   gpos->mmfunc = default_mmfunc;
 
   /* skip version */
@@ -6093,19 +6092,6 @@ HB_Error  HB_GPOS_Clear_Features( HB_GPOSHeader*  gpos )
 
   for ( i = 0; i < gpos->LookupList.LookupCount; i++ )
     properties[i] = 0;
-
-  return HB_Err_Ok;
-}
-
-
-
-HB_Error  HB_GPOS_Register_Glyph_Function( HB_GPOSHeader*    gpos,
-					   HB_GlyphFunction  gfunc )
-{
-  if ( !gpos )
-    return HB_Err_Invalid_Argument;
-
-  gpos->gfunc = gfunc;
 
   return HB_Err_Ok;
 }

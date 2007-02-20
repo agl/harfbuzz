@@ -80,11 +80,6 @@ struct  HB_GPOSHeader_
 
   HB_GDEFHeader*    gdef;
 
-  /* the next field is used for a callback function to get the
-     glyph outline.                                            */
-
-  HB_GlyphFunction  gfunc;
-
   /* this is OpenType 1.2 -- Multiple Master fonts need this
      callback function to get various metric values from the
      PostScript interpreter.                                 */
@@ -141,10 +136,6 @@ HB_Error  HB_GPOS_Add_Feature( HB_GPOSHeader*  gpos,
 			       HB_UInt          property );
 
 HB_Error  HB_GPOS_Clear_Features( HB_GPOSHeader*  gpos );
-
-
-HB_Error  HB_GPOS_Register_Glyph_Function( HB_GPOSHeader*    gpos,
-					   HB_GlyphFunction  gfunc );
 
 
 HB_Error  HB_GPOS_Register_MM_Function( HB_GPOSHeader*  gpos,
