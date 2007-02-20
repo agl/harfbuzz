@@ -14,9 +14,7 @@
 #include "harfbuzz-global.h"
 #include "harfbuzz-impl.h"
 #include <assert.h>
-
-#include <ft2build.h>
-#include FT_TRUETYPE_TABLES_H
+#include <stdio.h>
 
 // -----------------------------------------------------------------------------------------------------
 //

@@ -185,12 +185,12 @@ typedef struct {
 
 typedef struct HB_Font_ {
     const HB_FontClass *klass;
-    FT_Face freetypeFace;
 
     /* Metrics */
     HB_UShort x_ppem, y_ppem;
     HB_16Dot16 x_scale, y_scale;
 
+    void *faceData;
     void *userData;
 } HB_FontRec;
 
