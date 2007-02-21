@@ -14,6 +14,7 @@
 #include <assert.h>
 #include <stdio.h>
 
+/*
 //  Vocabulary
 //      Base ->         A consonant or an independent vowel in its full (not subscript) form. It is the
 //                      center of the syllable, it can be surrounded by coeng (subscript) consonants, vowels,
@@ -53,35 +54,35 @@
 //
 //   order is important here! This order must be the same that is found in each horizontal
 //   line in the statetable for Khmer (see khmerStateTable) .
-//
+*/
 enum KhmerCharClassValues {
     CC_RESERVED             =  0,
-    CC_CONSONANT            =  1, // Consonant of type 1 or independent vowel
-    CC_CONSONANT2           =  2, // Consonant of type 2
-    CC_CONSONANT3           =  3, // Consonant of type 3
-    CC_ZERO_WIDTH_NJ_MARK   =  4, // Zero Width non joiner character (0x200C)
+    CC_CONSONANT            =  1, /* Consonant of type 1 or independent vowel */
+    CC_CONSONANT2           =  2, /* Consonant of type 2 */
+    CC_CONSONANT3           =  3, /* Consonant of type 3 */
+    CC_ZERO_WIDTH_NJ_MARK   =  4, /* Zero Width non joiner character (0x200C) */
     CC_CONSONANT_SHIFTER    =  5,
-    CC_ROBAT                =  6, // Khmer special diacritic accent -treated differently in state table
-    CC_COENG                =  7, // Subscript consonant combining character
+    CC_ROBAT                =  6, /* Khmer special diacritic accent -treated differently in state table */
+    CC_COENG                =  7, /* Subscript consonant combining character */
     CC_DEPENDENT_VOWEL      =  8,
     CC_SIGN_ABOVE           =  9,
     CC_SIGN_AFTER           = 10,
-    CC_ZERO_WIDTH_J_MARK    = 11, // Zero width joiner character
-    CC_COUNT                = 12  // This is the number of character classes
+    CC_ZERO_WIDTH_J_MARK    = 11, /* Zero width joiner character */
+    CC_COUNT                = 12  /* This is the number of character classes */
 };
 
 
 enum KhmerCharClassFlags {
     CF_CLASS_MASK    = 0x0000FFFF,
 
-    CF_CONSONANT     = 0x01000000,  // flag to speed up comparing
-    CF_SPLIT_VOWEL   = 0x02000000,  // flag for a split vowel -> the first part is added in front of the syllable
-    CF_DOTTED_CIRCLE = 0x04000000,  // add a dotted circle if a character with this flag is the first in a syllable
-    CF_COENG         = 0x08000000,  // flag to speed up comparing
-    CF_SHIFTER       = 0x10000000,  // flag to speed up comparing
-    CF_ABOVE_VOWEL   = 0x20000000,  // flag to speed up comparing
+    CF_CONSONANT     = 0x01000000,  /* flag to speed up comparing */
+    CF_SPLIT_VOWEL   = 0x02000000,  /* flag for a split vowel -> the first part is added in front of the syllable */
+    CF_DOTTED_CIRCLE = 0x04000000,  /* add a dotted circle if a character with this flag is the first in a syllable */
+    CF_COENG         = 0x08000000,  /* flag to speed up comparing */
+    CF_SHIFTER       = 0x10000000,  /* flag to speed up comparing */
+    CF_ABOVE_VOWEL   = 0x20000000,  /* flag to speed up comparing */
 
-    // position flags
+    /* position flags */
     CF_POS_BEFORE    = 0x00080000,
     CF_POS_BELOW     = 0x00040000,
     CF_POS_ABOVE     = 0x00020000,
@@ -90,7 +91,7 @@ enum KhmerCharClassFlags {
 };
 
 
-// Characters that get referred to by name
+/* Characters that get referred to by name */
 enum KhmerChar {
     C_SIGN_ZWNJ     = 0x200C,
     C_SIGN_ZWJ      = 0x200D,
@@ -102,11 +103,12 @@ enum KhmerChar {
 };
 
 
+/*
 //  simple classes, they are used in the statetable (in this file) to control the length of a syllable
 //  they are also used to know where a character should be placed (location in reference to the base character)
 //  and also to know if a character, when independently displayed, should be displayed with a dotted-circle to
 //  indicate error in syllable construction
-//
+*/
 enum {
     _xx = CC_RESERVED,
     _sa = CC_SIGN_ABOVE | CF_DOTTED_CIRCLE | CF_POS_ABOVE,
@@ -122,18 +124,20 @@ enum {
     _dr = CC_DEPENDENT_VOWEL | CF_POS_AFTER | CF_DOTTED_CIRCLE,
     _co = CC_COENG | CF_COENG | CF_DOTTED_CIRCLE,
 
-    // split vowel
+    /* split vowel */
     _va = _da | CF_SPLIT_VOWEL,
     _vr = _dr | CF_SPLIT_VOWEL
 };
 
 
+/*
 //   Character class: a character class value
 //   ORed with character class flags.
-//
+*/
 typedef unsigned long KhmerCharClass;
 
 
+/*
 //  Character class tables
 //  _xx character does not combine into syllable, such as numbers, puntuation marks, non-Khmer signs...
 //  _sa Sign placed above the base
@@ -151,28 +155,29 @@ typedef unsigned long KhmerCharClass;
 //      it to create a subscript consonant or independent vowel
 //  _va Khmer split vowel in which the first part is before the base and the second one above the base
 //  _vr Khmer split vowel in which the first part is before the base and the second one behind (right of) the base
-//
+*/
 static const KhmerCharClass khmerCharClasses[] = {
-    _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c1, _c1, // 1780 - 178F
-    _c1, _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c2, _c1, _c1, _c1, _c3, _c3, // 1790 - 179F
-    _c1, _c3, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, // 17A0 - 17AF
-    _c1, _c1, _c1, _c1, _dr, _dr, _dr, _da, _da, _da, _da, _db, _db, _db, _va, _vr, // 17B0 - 17BF
-    _vr, _dl, _dl, _dl, _vr, _vr, _sa, _sp, _sp, _cs, _cs, _sa, _rb, _sa, _sa, _sa, // 17C0 - 17CF
-    _sa, _sa, _co, _sa, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _sa, _xx, _xx  // 17D0 - 17DF
+    _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c1, _c1, /* 1780 - 178F */
+    _c1, _c1, _c1, _c1, _c3, _c1, _c1, _c1, _c1, _c3, _c2, _c1, _c1, _c1, _c3, _c3, /* 1790 - 179F */
+    _c1, _c3, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, _c1, /* 17A0 - 17AF */
+    _c1, _c1, _c1, _c1, _dr, _dr, _dr, _da, _da, _da, _da, _db, _db, _db, _va, _vr, /* 17B0 - 17BF */
+    _vr, _dl, _dl, _dl, _vr, _vr, _sa, _sp, _sp, _cs, _cs, _sa, _rb, _sa, _sa, _sa, /* 17C0 - 17CF */
+    _sa, _sa, _co, _sa, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _xx, _sa, _xx, _xx  /* 17D0 - 17DF */
 };
 
-// this enum must reflect the range of khmerCharClasses
+/* this enum must reflect the range of khmerCharClasses */
 enum KhmerCharClassesRange {
     KhmerFirstChar = 0x1780,
     KhmerLastChar  = 0x17df
 };
 
+/*
 //  Below we define how a character in the input string is either in the khmerCharClasses table
 //  (in which case we get its type back), a ZWJ or ZWNJ (two characters that may appear
 //  within the syllable, but are not in the table) we also get their type back, or an unknown object
 //  in which case we get _xx (CC_RESERVED) back
-//
-static inline KhmerCharClass getKhmerCharClass(HB_UChar16 uc)
+*/
+static KhmerCharClass getKhmerCharClass(HB_UChar16 uc)
 {
     if (uc == C_SIGN_ZWJ) {
         return CC_ZERO_WIDTH_J_MARK;
@@ -190,6 +195,7 @@ static inline KhmerCharClass getKhmerCharClass(HB_UChar16 uc)
 }
 
 
+/*
 //  The stateTable is used to calculate the end (the length) of a well
 //  formed Khmer Syllable.
 //
@@ -249,51 +255,52 @@ static inline KhmerCharClass getKhmerCharClass(HB_UChar16 uc)
 //
 //  there are lines with equal content but for an easier understanding
 //  (and maybe change in the future) we did not join them
-//
+*/
 static const signed char khmerStateTable[][CC_COUNT] =
 {
-   // xx  c1  c2  c3 zwnj cs  rb  co  dv  sa  sp zwj
-    { 1,  2,  2,  2,  1,  1,  1,  6,  1,  1,  1,  2}, //  0 - ground state
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, //  1 - exit state (or sign to the right of the syllable)
-    {-1, -1, -1, -1,  3,  4,  5,  6, 16, 17,  1, -1}, //  2 - Base consonant
-    {-1, -1, -1, -1, -1,  4, -1, -1, 16, -1, -1, -1}, //  3 - First ZWNJ before a register shifter It can only be followed by a shifter or a vowel
-    {-1, -1, -1, -1, 15, -1, -1,  6, 16, 17,  1, 14}, //  4 - First register shifter
-    {-1, -1, -1, -1, -1, -1, -1, -1, 20, -1,  1, -1}, //  5 - Robat
-    {-1,  7,  8,  9, -1, -1, -1, -1, -1, -1, -1, -1}, //  6 - First Coeng
-    {-1, -1, -1, -1, 12, 13, -1, 10, 16, 17,  1, 14}, //  7 - First consonant of type 1 after coeng
-    {-1, -1, -1, -1, 12, 13, -1, -1, 16, 17,  1, 14}, //  8 - First consonant of type 2 after coeng
-    {-1, -1, -1, -1, 12, 13, -1, 10, 16, 17,  1, 14}, //  9 - First consonant or type 3 after ceong
-    {-1, 11, 11, 11, -1, -1, -1, -1, -1, -1, -1, -1}, // 10 - Second Coeng (no register shifter before)
-    {-1, -1, -1, -1, 15, -1, -1, -1, 16, 17,  1, 14}, // 11 - Second coeng consonant (or ind. vowel) no register shifter before
-    {-1, -1, -1, -1, -1, 13, -1, -1, 16, -1, -1, -1}, // 12 - Second ZWNJ before a register shifter
-    {-1, -1, -1, -1, 15, -1, -1, -1, 16, 17,  1, 14}, // 13 - Second register shifter
-    {-1, -1, -1, -1, -1, -1, -1, -1, 16, -1, -1, -1}, // 14 - ZWJ before vowel
-    {-1, -1, -1, -1, -1, -1, -1, -1, 16, -1, -1, -1}, // 15 - ZWNJ before vowel
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 17,  1, 18}, // 16 - dependent vowel
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1, 18}, // 17 - sign above
-    {-1, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1}, // 18 - ZWJ after vowel
-    {-1,  1, -1,  1, -1, -1, -1, -1, -1, -1, -1, -1}, // 19 - Third coeng
-    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1, -1}, // 20 - dependent vowel after a Robat
+    /* xx  c1  c2  c3 zwnj cs  rb  co  dv  sa  sp zwj */
+    { 1,  2,  2,  2,  1,  1,  1,  6,  1,  1,  1,  2}, /*  0 - ground state */
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, /*  1 - exit state (or sign to the right of the syllable) */
+    {-1, -1, -1, -1,  3,  4,  5,  6, 16, 17,  1, -1}, /*  2 - Base consonant */
+    {-1, -1, -1, -1, -1,  4, -1, -1, 16, -1, -1, -1}, /*  3 - First ZWNJ before a register shifter It can only be followed by a shifter or a vowel */
+    {-1, -1, -1, -1, 15, -1, -1,  6, 16, 17,  1, 14}, /*  4 - First register shifter */
+    {-1, -1, -1, -1, -1, -1, -1, -1, 20, -1,  1, -1}, /*  5 - Robat */
+    {-1,  7,  8,  9, -1, -1, -1, -1, -1, -1, -1, -1}, /*  6 - First Coeng */
+    {-1, -1, -1, -1, 12, 13, -1, 10, 16, 17,  1, 14}, /*  7 - First consonant of type 1 after coeng */
+    {-1, -1, -1, -1, 12, 13, -1, -1, 16, 17,  1, 14}, /*  8 - First consonant of type 2 after coeng */
+    {-1, -1, -1, -1, 12, 13, -1, 10, 16, 17,  1, 14}, /*  9 - First consonant or type 3 after ceong */
+    {-1, 11, 11, 11, -1, -1, -1, -1, -1, -1, -1, -1}, /* 10 - Second Coeng (no register shifter before) */
+    {-1, -1, -1, -1, 15, -1, -1, -1, 16, 17,  1, 14}, /* 11 - Second coeng consonant (or ind. vowel) no register shifter before */
+    {-1, -1, -1, -1, -1, 13, -1, -1, 16, -1, -1, -1}, /* 12 - Second ZWNJ before a register shifter */
+    {-1, -1, -1, -1, 15, -1, -1, -1, 16, 17,  1, 14}, /* 13 - Second register shifter */
+    {-1, -1, -1, -1, -1, -1, -1, -1, 16, -1, -1, -1}, /* 14 - ZWJ before vowel */
+    {-1, -1, -1, -1, -1, -1, -1, -1, 16, -1, -1, -1}, /* 15 - ZWNJ before vowel */
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, 17,  1, 18}, /* 16 - dependent vowel */
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1, 18}, /* 17 - sign above */
+    {-1, -1, -1, -1, -1, -1, -1, 19, -1, -1, -1, -1}, /* 18 - ZWJ after vowel */
+    {-1,  1, -1,  1, -1, -1, -1, -1, -1, -1, -1, -1}, /* 19 - Third coeng */
+    {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,  1, -1}, /* 20 - dependent vowel after a Robat */
 };
 
 
-//  #define KHMER_DEBUG
+/*  #define KHMER_DEBUG */
 #ifdef KHMER_DEBUG
 #define KHDEBUG qDebug
 #else
 #define KHDEBUG if(0) printf
 #endif
 
+/*
 //  Given an input string of characters and a location in which to start looking
 //  calculate, using the state table, which one is the last character of the syllable
 //  that starts in the starting position.
-//
-static inline int khmer_nextSyllableBoundary(const HB_UChar16 *s, int start, int end, bool *invalid)
+*/
+static int khmer_nextSyllableBoundary(const HB_UChar16 *s, int start, int end, HB_Bool *invalid)
 {
-    *invalid = false;
     const HB_UChar16 *uc = s + start;
     int state = 0;
     int pos = start;
+    *invalid = FALSE;
 
     while (pos < end) {
         KhmerCharClass charClass = getKhmerCharClass(*uc);
@@ -330,14 +337,10 @@ static const HB_OpenTypeFeature khmer_features[] = {
 #endif
 
 
-static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
+static HB_Bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
 {
-    // according to the specs this is the max length one can get
-    // ### the real value should be smaller
-    assert(item->item.length < 13);
-
-//    KHDEBUG("syllable from %d len %d, str='%s'", item->from, item->length,
-//	    item->string->mid(item->from, item->length).toUtf8().data());
+/*    KHDEBUG("syllable from %d len %d, str='%s'", item->from, item->length,
+  	    item->string->mid(item->from, item->length).toUtf8().data()); */
 
     int len = 0;
     int syllableEnd = item->item.pos + item->item.length;
@@ -349,6 +352,16 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
 	PostForm = 0x04,
 	BelowForm = 0x08
     };
+#ifndef NO_OPENTYPE
+    const int availableGlyphs = item->num_glyphs;
+#endif
+    int coengRo;
+    int i;
+
+    /* according to the specs this is the max length one can get
+       ### the real value should be smaller */
+    assert(item->item.length < 13);
+
     memset(properties, 0, 16*sizeof(unsigned char));
 
 #ifdef KHMER_DEBUG
@@ -358,40 +371,41 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
     }
 #endif
 
+    /*
     // write a pre vowel or the pre part of a split vowel first
     // and look out for coeng + ro. RO is the only vowel of type 2, and
     // therefore the only one that requires saving space before the base.
-    //
-    int coengRo = -1;  // There is no Coeng Ro, if found this value will change
-    for (int i = item->item.pos; i < syllableEnd; i += 1) {
+    */
+    coengRo = -1;  /* There is no Coeng Ro, if found this value will change */
+    for (i = item->item.pos; i < syllableEnd; i += 1) {
         KhmerCharClass charClass = getKhmerCharClass(item->string[i]);
 
-        // if a split vowel, write the pre part. In Khmer the pre part
-        // is the same for all split vowels, same glyph as pre vowel C_VOWEL_E
+        /* if a split vowel, write the pre part. In Khmer the pre part
+           is the same for all split vowels, same glyph as pre vowel C_VOWEL_E */
         if (charClass & CF_SPLIT_VOWEL) {
             reordered[len] = C_VOWEL_E;
             properties[len] = PreForm;
             ++len;
-            break; // there can be only one vowel
+            break; /* there can be only one vowel */
         }
-        // if a vowel with pos before write it out
+        /* if a vowel with pos before write it out */
         if (charClass & CF_POS_BEFORE) {
             reordered[len] = item->string[i];
             properties[len] = PreForm;
             ++len;
-            break; // there can be only one vowel
+            break; /* there can be only one vowel */
         }
-        // look for coeng + ro and remember position
-        // works because coeng + ro is always in front of a vowel (if there is a vowel)
-        // and because CC_CONSONANT2 is enough to identify it, as it is the only consonant
-        // with this flag
+        /* look for coeng + ro and remember position
+           works because coeng + ro is always in front of a vowel (if there is a vowel)
+           and because CC_CONSONANT2 is enough to identify it, as it is the only consonant
+           with this flag */
         if ( (charClass & CF_COENG) && (i + 1 < syllableEnd) &&
               ( (getKhmerCharClass(item->string[i+1]) & CF_CLASS_MASK) == CC_CONSONANT2) ) {
             coengRo = i;
         }
     }
 
-    // write coeng + ro if found
+    /* write coeng + ro if found */
     if (coengRo > -1) {
         reordered[len] = C_COENG;
         properties[len] = PreForm;
@@ -401,27 +415,28 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
         ++len;
     }
 
-    // shall we add a dotted circle?
-    // If in the position in which the base should be (first char in the string) there is
-    // a character that has the Dotted circle flag (a character that cannot be a base)
-    // then write a dotted circle
+    /*
+       shall we add a dotted circle?
+       If in the position in which the base should be (first char in the string) there is
+       a character that has the Dotted circle flag (a character that cannot be a base)
+       then write a dotted circle */
     if (getKhmerCharClass(item->string[item->item.pos]) & CF_DOTTED_CIRCLE) {
         reordered[len] = C_DOTTED_CIRCLE;
         ++len;
     }
 
-    // copy what is left to the output, skipping before vowels and
-    // coeng Ro if they are present
-    for (int i = item->item.pos; i < syllableEnd; i += 1) {
+    /* copy what is left to the output, skipping before vowels and
+       coeng Ro if they are present */
+    for (i = item->item.pos; i < syllableEnd; i += 1) {
         HB_UChar16 uc = item->string[i];
         KhmerCharClass charClass = getKhmerCharClass(uc);
 
-        // skip a before vowel, it was already processed
+        /* skip a before vowel, it was already processed */
         if (charClass & CF_POS_BEFORE) {
             continue;
         }
 
-        // skip coeng + ro, it was already processed
+        /* skip coeng + ro, it was already processed */
         if (i == coengRo) {
             i += 1;
             continue;
@@ -448,8 +463,8 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
                 break;
 
             default:
-                // assign the correct flags to a coeng consonant
-                // Consonants of type 3 are taged as Post forms and those type 1 as below forms
+                /* assign the correct flags to a coeng consonant
+                   Consonants of type 3 are taged as Post forms and those type 1 as below forms */
                 if ( (charClass & CF_COENG) && i + 1 < syllableEnd ) {
                     unsigned char property = (getKhmerCharClass(item->string[i+1]) & CF_CLASS_MASK) == CC_CONSONANT3 ?
                                               PostForm : BelowForm;
@@ -463,11 +478,11 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
                     break;
                 }
 
-                // if a shifter is followed by an above vowel change the shifter to below form,
-                // an above vowel can have two possible positions i + 1 or i + 3
-                // (position i+1 corresponds to unicode 3, position i+3 to Unicode 4)
-                // and there is an extra rule for C_VOWEL_AA + C_SIGN_NIKAHIT also for two
-                // different positions, right after the shifter or after a vowel (Unicode 4)
+                /* if a shifter is followed by an above vowel change the shifter to below form,
+                   an above vowel can have two possible positions i + 1 or i + 3
+                   (position i+1 corresponds to unicode 3, position i+3 to Unicode 4)
+                   and there is an extra rule for C_VOWEL_AA + C_SIGN_NIKAHIT also for two
+                   different positions, right after the shifter or after a vowel (Unicode 4) */
                 if ( (charClass & CF_SHIFTER) && (i + 1 < syllableEnd) ) {
                     if (getKhmerCharClass(item->string[i+1]) & CF_ABOVE_VOWEL ) {
                         reordered[len] = uc;
@@ -501,38 +516,35 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
                     }
                 }
 
-                // default - any other characters
+                /* default - any other characters */
                 reordered[len] = uc;
                 ++len;
                 break;
-        } // switch
-    } // for
+        } /* switch */
+    } /* for */
 
-#ifndef NO_OPENTYPE
-    const int availableGlyphs = item->num_glyphs;
-#endif
     if (!item->font->klass->stringToGlyphs(item->font,
                                            reordered, len,
                                            item->glyphs, &item->num_glyphs,
                                            item->item.bidiLevel % 2))
-        return false;
+        return FALSE;
 
 
     KHDEBUG("after shaping: len=%d", len);
-    for (int i = 0; i < len; i++) {
-	item->attributes[i].mark = false;
-	item->attributes[i].clusterStart = false;
+    for (i = 0; i < len; i++) {
+	item->attributes[i].mark = FALSE;
+	item->attributes[i].clusterStart = FALSE;
 	item->attributes[i].justification = 0;
-	item->attributes[i].zeroWidth = false;
+	item->attributes[i].zeroWidth = FALSE;
 	KHDEBUG("    %d: %4x property=%x", i, reordered[i], properties[i]);
     }
 
-    // now we have the syllable in the right order, and can start running it through open type.
+    /* now we have the syllable in the right order, and can start running it through open type. */
 
 #ifndef NO_OPENTYPE
     if (openType) {
- 	uint where[16];
-        for (int i = 0; i < len; ++i) {
+ 	uint32_t where[16];
+        for (i = 0; i < len; ++i) {
             where[i] = ~(PreSubstProperty
                          | BelowSubstProperty
                          | AboveSubstProperty
@@ -550,39 +562,42 @@ static bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
         }
 
         HB_OpenTypeShape(item, where);
-        if (!HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/false))
-            return false;
+        if (!HB_OpenTypePosition(item, availableGlyphs, /*doLogClusters*/FALSE))
+            return FALSE;
     } else
 #endif
     {
 	KHDEBUG("Not using openType");
     }
 
-    item->attributes[0].clusterStart = true;
-    return true;
+    item->attributes[0].clusterStart = TRUE;
+    return TRUE;
 }
 
 HB_Bool HB_KhmerShape(HB_ShaperItem *item)
 {
-    assert(item->item.script == HB_Script_Khmer);
-
-    HB_Bool openType = false;
-#ifndef NO_OPENTYPE
-    openType = HB_SelectScript(item, khmer_features);
-#endif
+    HB_Bool openType = FALSE;
     unsigned short *logClusters = item->log_clusters;
+    int i;
 
     HB_ShaperItem syllable = *item;
     int first_glyph = 0;
 
     int sstart = item->item.pos;
     int end = sstart + item->item.length;
+
+    assert(item->item.script == HB_Script_Khmer);
+
+#ifndef NO_OPENTYPE
+    openType = HB_SelectScript(item, khmer_features);
+#endif
+
     KHDEBUG("khmer_shape: from %d length %d", item->item.pos, item->item.length);
     while (sstart < end) {
-        bool invalid;
+        HB_Bool invalid;
         int send = khmer_nextSyllableBoundary(item->string, sstart, end, &invalid);
         KHDEBUG("syllable from %d, length %d, invalid=%s", sstart, send-sstart,
-               invalid ? "true" : "false");
+               invalid ? "TRUE" : "FALSE");
         syllable.item.pos = sstart;
         syllable.item.length = send-sstart;
         syllable.glyphs = item->glyphs + first_glyph;
@@ -593,14 +608,14 @@ HB_Bool HB_KhmerShape(HB_ShaperItem *item)
         if (!khmer_shape_syllable(openType, &syllable)) {
             KHDEBUG("syllable shaping failed, syllable requests %d glyphs", syllable.num_glyphs);
             item->num_glyphs += syllable.num_glyphs;
-            return false;
+            return FALSE;
         }
-        // fix logcluster array
+        /* fix logcluster array */
         KHDEBUG("syllable:");
-        for (uint32_t i = first_glyph; i < first_glyph + syllable.num_glyphs; ++i)
+        for (i = first_glyph; i < first_glyph + (int)syllable.num_glyphs; ++i)
             KHDEBUG("        %d -> glyph %x", i, item->glyphs[i]);
         KHDEBUG("    logclusters:");
-        for (int i = sstart; i < send; ++i) {
+        for (i = sstart; i < send; ++i) {
             KHDEBUG("        %d -> glyph %d", i, first_glyph);
             logClusters[i-item->item.pos] = first_glyph;
         }
@@ -608,25 +623,25 @@ HB_Bool HB_KhmerShape(HB_ShaperItem *item)
         first_glyph += syllable.num_glyphs;
     }
     item->num_glyphs = first_glyph;
-    return true;
+    return TRUE;
 }
 
-void HB_KhmerAttributes(HB_Script /*script*/, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
+void HB_KhmerAttributes(HB_Script script, const HB_UChar16 *text, uint32_t from, uint32_t len, HB_CharAttributes *attributes)
 {
     int end = from + len;
     const HB_UChar16 *uc = text + from;
-    attributes += from;
     uint32_t i = 0;
+    attributes += from;
     while ( i < len ) {
-	bool invalid;
+	HB_Bool invalid;
 	uint32_t boundary = khmer_nextSyllableBoundary( text, from+i, end, &invalid ) - from;
 
-	attributes[i].charStop = true;
+	attributes[i].charStop = TRUE;
 
 	if ( boundary > len-1 ) boundary = len;
 	i++;
 	while ( i < boundary ) {
-	    attributes[i].charStop = false;
+	    attributes[i].charStop = FALSE;
 	    ++uc;
 	    ++i;
 	}
