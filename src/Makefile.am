@@ -12,7 +12,7 @@ MAINSOURCES =  \
 	harfbuzz-gsub.c \
 	harfbuzz-open.c \
 	harfbuzz-shaper.cpp \
-	harfbuzz-tibetan.cpp \
+	harfbuzz-tibetan.c \
 	harfbuzz-khmer.cpp \
 	harfbuzz-indic.cpp \
 	harfbuzz-hebrew.cpp \
