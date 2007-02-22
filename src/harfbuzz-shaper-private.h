@@ -133,11 +133,17 @@ void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item);
                                           shaper_item->advances, \
                                           shaper_item->face->current_flags);
 
-#define HB_STACKARRAY(Type, Name, Length) \
+#define HB_DECLARE_STACKARRAY(Type, Name) \
     Type stack##Name[512]; \
-    Type *Name = stack##Name; \
+    Type *Name = stack##Name;
+
+#define HB_INIT_STACKARRAY(Type, Name, Length) \
     if ((Length) >= 512) \
         Name = (Type *)malloc((Length) * sizeof(Type));
+
+#define HB_STACKARRAY(Type, Name, Length) \
+    HB_DECLARE_STACKARRAY(Type, Name) \
+    HB_INIT_STACKARRAY(Type, Name, Length)
 
 #define HB_FREE_STACKARRAY(Name) \
     if (stack##Name != Name) \

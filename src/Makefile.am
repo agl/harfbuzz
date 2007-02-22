@@ -16,7 +16,7 @@ MAINSOURCES =  \
 	harfbuzz-khmer.c \
 	harfbuzz-indic.cpp \
 	harfbuzz-hebrew.c \
-	harfbuzz-arabic.cpp \
+	harfbuzz-arabic.c \
 	harfbuzz-hangul.c \
 	harfbuzz-myanmar.c
 
