@@ -1089,7 +1089,7 @@ static HB_Error  Do_ContextSubst( HB_GSUBHeader*        gsub,
 				  int                    nesting_level )
 {
   HB_Error  error;
-  HB_UShort i, old_pos;
+  HB_UInt   i, old_pos;
 
 
   i = 0;
