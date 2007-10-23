@@ -107,15 +107,27 @@ typedef enum {
 
 
 typedef struct {
-    /*HB_LineBreakType*/ unsigned int lineBreakType  :2;
-    /*HB_Bool*/ unsigned int whiteSpace              :1;     /* A unicode whitespace character, except NBSP, ZWNBSP */
-    /*HB_Bool*/ unsigned int charStop                :1;     /* Valid cursor position (for left/right arrow) */
-    unsigned int unused                  :4;
+    /*HB_LineBreakType*/ hb_uint8 lineBreakType  :2;
+    /*HB_Bool*/ hb_uint8 whiteSpace              :1;     /* A unicode whitespace character, except NBSP, ZWNBSP */
+    /*HB_Bool*/ hb_uint8 charStop                :1;     /* Valid cursor position (for left/right arrow) */
+    /*HB_Bool*/ hb_uint8 wordBoundary            :1;
+    /*HB_Bool*/ hb_uint8 sentenceBoundary        :1;
+    hb_uint8 unused                  :2;
 } HB_CharAttributes;
 
 void HB_GetCharAttributes(const HB_UChar16 *string, hb_uint32 stringLength,
                           const HB_ScriptItem *items, hb_uint32 numItems,
                           HB_CharAttributes *attributes);
+
+/* requires HB_GetCharAttributes to be called before */
+void HB_GetWordBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
+                          const HB_ScriptItem *items, hb_uint32 numItems,
+                          HB_CharAttributes *attributes);
+
+/* requires HB_GetCharAttributes to be called before */
+void HB_GetSentenceBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
+                              const HB_ScriptItem *items, hb_uint32 numItems,
+                              HB_CharAttributes *attributes);
 
 
 typedef enum {

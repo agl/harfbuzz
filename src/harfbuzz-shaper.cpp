@@ -646,6 +646,137 @@ void HB_GetCharAttributes(const HB_UChar16 *string, hb_uint32 stringLength,
     }
 }
 
+
+enum BreakRule { NoBreak = 0, Break = 1, Middle = 2 };
+
+static const hb_uint8 wordbreakTable[HB_Word_ExtendNumLet + 1][HB_Word_ExtendNumLet + 1] = {
+//        Other    Format   Katakana ALetter  MidLetter MidNum  Numeric  ExtendNumLet
+    {   Break,   Break,   Break,   Break,   Break,   Break,   Break,   Break }, // Other
+    {   Break,   Break,   Break,   Break,   Break,   Break,   Break,   Break }, // Format 
+    {   Break,   Break, NoBreak,   Break,   Break,   Break,   Break, NoBreak }, // Katakana
+    {   Break,   Break,   Break, NoBreak,  Middle,   Break, NoBreak, NoBreak }, // ALetter
+    {   Break,   Break,   Break,   Break,   Break,   Break,   Break,   Break }, // MidLetter
+    {   Break,   Break,   Break,   Break,   Break,   Break,   Break,   Break }, // MidNum
+    {   Break,   Break,   Break, NoBreak,   Break,  Middle, NoBreak, NoBreak }, // Numeric
+    {   Break,   Break, NoBreak, NoBreak,   Break,   Break, NoBreak, NoBreak }, // ExtendNumLet
+};
+
+void HB_GetWordBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
+                          const HB_ScriptItem * /*items*/, hb_uint32 /*numItems*/,
+                          HB_CharAttributes *attributes)
+{
+    if (stringLength == 0)
+        return;
+    uint brk = HB_GetWordClass(string[0]);
+    attributes[0].wordBoundary = true;
+    for (hb_uint32 i = 1; i < stringLength; ++i) {
+        if (!attributes[i].charStop) {
+            attributes[i].wordBoundary = false;
+            continue;
+        }
+        hb_uint32 nbrk = HB_GetWordClass(string[i]);
+        if (nbrk == HB_Word_Format) {
+            attributes[i].wordBoundary = (HB_GetSentenceClass(string[i-1]) == HB_Sentence_Sep);
+            continue;
+        }
+        BreakRule rule = (BreakRule)wordbreakTable[brk][nbrk];
+        if (rule == Middle) {
+            rule = Break;
+            hb_uint32 lookahead = i + 1;
+            while (lookahead < stringLength) {
+                hb_uint32 testbrk = HB_GetWordClass(string[lookahead]);
+                if (testbrk == HB_Word_Format && HB_GetSentenceClass(string[lookahead]) != HB_Sentence_Sep) {
+                    ++lookahead;
+                    continue;
+                }
+                if (testbrk == brk) {
+                    rule = NoBreak;
+                    while (i < lookahead)
+                        attributes[i++].wordBoundary = false;
+                    nbrk = testbrk;
+                }
+                break;
+            }
+        }
+        attributes[i].wordBoundary = (rule == Break);
+        brk = nbrk;
+    }
+}
+
+
+enum SentenceBreakStates {
+    SB_Initial,
+    SB_Upper,
+    SB_UpATerm, 
+    SB_ATerm,
+    SB_ATermC, 
+    SB_ACS, 
+    SB_STerm, 
+    SB_STermC, 
+    SB_SCS,
+    SB_BAfter, 
+    SB_Break,
+    SB_Look
+};
+
+static const hb_uint8 sentenceBreakTable[HB_Sentence_Close + 1][HB_Sentence_Close + 1] = {
+//        Other       Sep         Format      Sp          Lower       Upper       OLetter     Numeric     ATerm       STerm       Close
+      { SB_Initial, SB_BAfter , SB_Initial, SB_Initial, SB_Initial, SB_Upper  , SB_Initial, SB_Initial, SB_ATerm  , SB_STerm  , SB_Initial }, // SB_Initial,
+      { SB_Initial, SB_BAfter , SB_Upper  , SB_Initial, SB_Initial, SB_Upper  , SB_Initial, SB_Initial, SB_UpATerm, SB_STerm  , SB_Initial }, // SB_Upper
+      
+      { SB_Look   , SB_BAfter , SB_UpATerm, SB_ACS    , SB_Initial, SB_Upper  , SB_Break  , SB_Initial, SB_ATerm  , SB_STerm  , SB_ATermC  }, // SB_UpATerm
+      { SB_Look   , SB_BAfter , SB_ATerm  , SB_ACS    , SB_Initial, SB_Break  , SB_Break  , SB_Initial, SB_ATerm  , SB_STerm  , SB_ATermC  }, // SB_ATerm
+      { SB_Look   , SB_BAfter , SB_ATermC , SB_ACS    , SB_Initial, SB_Break  , SB_Break  , SB_Look   , SB_ATerm  , SB_STerm  , SB_ATermC  }, // SB_ATermC,
+      { SB_Look   , SB_BAfter , SB_ACS    , SB_ACS    , SB_Initial, SB_Break  , SB_Break  , SB_Look   , SB_ATerm  , SB_STerm  , SB_Look    }, // SB_ACS,
+      
+      { SB_Break  , SB_BAfter , SB_STerm  , SB_SCS    , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_ATerm  , SB_STerm  , SB_STermC  }, // SB_STerm,
+      { SB_Break  , SB_BAfter , SB_STermC , SB_SCS    , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_ATerm  , SB_STerm  , SB_STermC  }, // SB_STermC,
+      { SB_Break  , SB_BAfter , SB_SCS    , SB_SCS    , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_ATerm  , SB_STerm  , SB_Break   }, // SB_SCS,
+      { SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break  , SB_Break   }, // SB_BAfter,
+};
+
+void HB_GetSentenceBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
+                              const HB_ScriptItem */*items*/, hb_uint32 /*numItems*/,
+                              HB_CharAttributes *attributes)
+{
+    if (stringLength == 0)
+        return;
+    hb_uint32 brk = sentenceBreakTable[SB_Initial][HB_GetSentenceClass(string[0])];
+    attributes[0].sentenceBoundary = true;
+    for (hb_uint32 i = 1; i < stringLength; ++i) {
+        if (!attributes[i].charStop) {
+            attributes[i].sentenceBoundary = false;
+            continue;
+        }
+        brk = sentenceBreakTable[brk][HB_GetSentenceClass(string[i])];
+        if (brk == SB_Look) {
+            brk = SB_Break;
+            hb_uint32 lookahead = i + 1;
+            while (lookahead < stringLength) {
+                hb_uint32 sbrk = HB_GetSentenceClass(string[lookahead]);
+                if (sbrk != HB_Sentence_Other && sbrk != HB_Sentence_Numeric && sbrk != HB_Sentence_Close) {
+                    break;
+                } else if (sbrk == HB_Sentence_Lower) {
+                    brk = SB_Initial;
+                    break;
+                }
+                ++lookahead;
+            }
+            if (brk == SB_Initial) {
+                while (i < lookahead)
+                    attributes[i++].sentenceBoundary = false;
+            }
+        }
+        if (brk == SB_Break) {
+            attributes[i].sentenceBoundary = true;
+            brk = sentenceBreakTable[SB_Initial][HB_GetSentenceClass(string[i])];
+        } else {
+            attributes[i].sentenceBoundary = false;
+        }
+    }
+}
+
+
 static inline char *tag_to_string(HB_UInt tag)
 {
     static char string[5];

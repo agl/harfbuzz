@@ -91,7 +91,40 @@ typedef enum
     HB_Grapheme_LVT
 } HB_GraphemeClass;
 
+
+typedef enum
+{
+    HB_Word_Other,
+    HB_Word_Format,
+    HB_Word_Katakana,
+    HB_Word_ALetter,
+    HB_Word_MidLetter,
+    HB_Word_MidNum,
+    HB_Word_Numeric,
+    HB_Word_ExtendNumLet
+} HB_WordClass;
+
+
+typedef enum
+{
+    HB_Sentence_Other,
+    HB_Sentence_Sep,
+    HB_Sentence_Format,
+    HB_Sentence_Sp,
+    HB_Sentence_Lower,
+    HB_Sentence_Upper,
+    HB_Sentence_OLetter,
+    HB_Sentence_Numeric,
+    HB_Sentence_ATerm,
+    HB_Sentence_STerm,
+    HB_Sentence_Close
+} HB_SentenceClass;
+
+HB_GraphemeClass HB_GetGraphemeClass(HB_UChar32 ch);
+HB_WordClass HB_GetWordClass(HB_UChar32 ch);
+HB_SentenceClass HB_GetSentenceClass(HB_UChar32 ch);
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch);
+
 void HB_GetGraphemeAndLineBreakClass(HB_UChar32 ch, HB_GraphemeClass *grapheme, HB_LineBreakClass *lineBreak);
 void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *combiningClass);
 HB_CharCategory HB_GetUnicodeCharCategory(HB_UChar32 ch);
