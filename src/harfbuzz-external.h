@@ -77,7 +77,22 @@ typedef enum
     HB_Symbol_Other              /*   So */
 } HB_CharCategory;
 
+typedef enum
+{
+    HB_Grapheme_Other, 
+    HB_Grapheme_CR,
+    HB_Grapheme_LF,
+    HB_Grapheme_Control,
+    HB_Grapheme_Extend,
+    HB_Grapheme_L, 
+    HB_Grapheme_V, 
+    HB_Grapheme_T, 
+    HB_Grapheme_LV, 
+    HB_Grapheme_LVT
+} HB_GraphemeClass;
+
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch);
+void HB_GetGraphemeAndLineBreakClass(HB_UChar32 ch, HB_GraphemeClass *grapheme, HB_LineBreakClass *lineBreak);
 void HB_GetUnicodeCharProperties(HB_UChar32 ch, HB_CharCategory *category, int *combiningClass);
 HB_CharCategory HB_GetUnicodeCharCategory(HB_UChar32 ch);
 int HB_GetUnicodeCharCombiningClass(HB_UChar32 ch);

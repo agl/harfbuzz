@@ -100,14 +100,30 @@ static const hb_uint8 breakTable[HB_LineBreak_JT+1][HB_LineBreak_JT+1] =
 #undef CP
 #undef PB
 
-
+static const hb_uint8 graphemeTable[HB_Grapheme_LVT + 1][HB_Grapheme_LVT + 1] =
+{
+//      Other, CR,    LF,    Control,Extend,L,    V,     T,     LV,    LVT
+    { true , true , true , true , true , true , true , true , true , true  }, // Other, 
+    { true , true , true , true , true , true , true , true , true , true  }, // CR,
+    { true , false, true , true , true , true , true , true , true , true  }, // LF,
+    { true , true , true , true , true , true , true , true , true , true  }, // Control,
+    { false, true , true , true , false, false, false, false, false, false }, // Extend,
+    { true , true , true , true , true , false, true , true , true , true  }, // L, 
+    { true , true , true , true , true , false, false, true , false, true  }, // V, 
+    { true , true , true , true , true , false, false, false, false, false }, // T, 
+    { true , true , true , true , true , false, true , true , true , true  }, // LV, 
+    { true , true , true , true , true , false, true , true , true , true  }, // LVT
+};
+    
 static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttributes *charAttributes)
 {
     if (!len)
         return;
 
     // ##### can this fail if the first char is a surrogate?
-    int cls = HB_GetLineBreakClass(*uc);
+    HB_LineBreakClass cls;
+    HB_GraphemeClass grapheme;
+    HB_GetGraphemeAndLineBreakClass(*uc, &grapheme, &cls);
     // handle case where input starts with an LF
     if (cls == HB_LineBreak_LF)
         cls = HB_LineBreak_BK;
@@ -120,14 +136,17 @@ static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttribute
         charAttributes[i].whiteSpace = false;
         charAttributes[i].charStop = true;
 
-        int ncls = HB_GetLineBreakClass(uc[i]);
+        HB_UChar32 code = uc[i];
+        HB_GraphemeClass ngrapheme;
+        HB_LineBreakClass ncls;
+        HB_GetGraphemeAndLineBreakClass(code, &ngrapheme, &ncls);
         // handle surrogates
         if (ncls == HB_LineBreak_SG) {
             if (HB_IsHighSurrogate(uc[i]) && i < len - 1 && HB_IsLowSurrogate(uc[i+1])) {
                 continue;
             } else if (HB_IsLowSurrogate(uc[i]) && HB_IsHighSurrogate(uc[i-1])) {
-                HB_UChar32 code = HB_SurrogateToUcs4(uc[i-1], uc[i]);
-                ncls = HB_GetLineBreakClass(code);
+                code = HB_SurrogateToUcs4(uc[i-1], uc[i]);
+                HB_GetGraphemeAndLineBreakClass(code, &ngrapheme, &ncls);
                 charAttributes[i].charStop = false;
             } else {
                 ncls = HB_LineBreak_AL;
@@ -137,8 +156,8 @@ static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttribute
         // set white space and char stop flag
         if (ncls >= HB_LineBreak_SP)
             charAttributes[i].whiteSpace = true;
-        if (ncls == HB_LineBreak_CM)
-            charAttributes[i].charStop = false;
+
+        charAttributes[i].charStop = graphemeTable[ngrapheme][grapheme];
 
         HB_LineBreakType lineBreakType = HB_NoBreak;
         if (cls >= HB_LineBreak_LF) {
@@ -197,6 +216,7 @@ static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttribute
         cls = ncls;
     next_no_cls_update:
         lcls = ncls;
+        grapheme = ngrapheme;
         charAttributes[i-1].lineBreakType = lineBreakType;
     }
     charAttributes[len-1].lineBreakType = HB_ForcedBreak;
