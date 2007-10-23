@@ -110,7 +110,7 @@ static const hb_uint8 graphemeTable[HB_Grapheme_LVT + 1][HB_Grapheme_LVT + 1] =
     { false, true , true , true , false, false, false, false, false, false }, // Extend,
     { true , true , true , true , true , false, true , true , true , true  }, // L, 
     { true , true , true , true , true , false, false, true , false, true  }, // V, 
-    { true , true , true , true , true , false, false, false, false, false }, // T, 
+    { true , true , true , true , true , true , false, false, false, false }, // T, 
     { true , true , true , true , true , false, true , true , true , true  }, // LV, 
     { true , true , true , true , true , false, true , true , true , true  }, // LVT
 };
