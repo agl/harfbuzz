@@ -9,6 +9,7 @@
  *
  ******************************************************************/
 #include "harfbuzz-global.h"
+#include "harfbuzz-impl.h"
 
 #if 0
 #include <stdio.h>
@@ -39,7 +40,7 @@ HB_Pointer _hb_alloc(HB_UInt   size,
   {
     block = malloc( size );
     if ( !block )
-      error = HB_Err_Out_Of_Memory;
+      error = ERR(HB_Err_Out_Of_Memory);
     else
       memset( (char*)block, 0, (size_t)size );
   }
@@ -59,7 +60,7 @@ HB_Pointer _hb_realloc(HB_Pointer  block,
 
     block2 = realloc( block, new_size );
     if ( block2 == NULL )
-        error = HB_Err_Out_Of_Memory;
+        error = ERR(HB_Err_Out_Of_Memory);
     else if ( new_size > old_size )
         memset( (char*)block2 + old_size, 0, (size_t)(new_size - old_size) );
 

@@ -116,7 +116,7 @@ static HB_Error  Load_Script( HB_ScriptTable*  s,
 
   if ( s->LangSysCount == 0 && s->DefaultLangSys.FeatureCount == 0 )
   {
-    error = HB_Err_Empty_Script;
+    error = ERR(HB_Err_Not_Covered);
     goto Fail2;
   }
 
@@ -230,7 +230,7 @@ HB_Error  _HB_OPEN_Load_ScriptList( HB_ScriptList*  sl,
     error = Load_Script( &sr[sl->ScriptCount].Script, stream );
     if ( error == HB_Err_Ok )
       sl->ScriptCount += 1;
-    else if ( error != HB_Err_Empty_Script )
+    else if ( error != HB_Err_Not_Covered )
       goto Fail;
 
     (void)FILE_Seek( cur_offset );
@@ -242,7 +242,7 @@ HB_Error  _HB_OPEN_Load_ScriptList( HB_ScriptList*  sl,
 #if 0
   if ( sl->ScriptCount == 0 )
   {
-    error = HB_Err_Invalid_SubTable;
+    error = ERR(HB_Err_Invalid_SubTable);
     goto Fail;
   }
 #endif
@@ -733,7 +733,7 @@ static HB_Error  Load_Coverage2( HB_CoverageFormat2*  cf2,
 	 ( rr[n].End - rr[n].Start + (long)rr[n].StartCoverageIndex ) >=
 	   0x10000L )
     {
-      error = HB_Err_Invalid_SubTable;
+      error = ERR(HB_Err_Invalid_SubTable);
       goto Fail;
     }
   }
@@ -775,7 +775,7 @@ HB_Error  _HB_OPEN_Load_Coverage( HB_Coverage*  c,
     return Load_Coverage2( &c->cf.cf2, stream );
 
   default:
-    return HB_Err_Invalid_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -910,7 +910,7 @@ HB_Error  _HB_OPEN_Coverage_Index( HB_Coverage*  c,
     return Coverage_Index2( &c->cf.cf2, glyphID, index );
 
   default:
-    return HB_Err_Invalid_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -952,7 +952,7 @@ static HB_Error  Load_ClassDef1( HB_ClassDefinition*  cd,
   /* sanity check; we are limited to 16bit integers */
 
   if ( cdf1->StartGlyph + (long)count >= 0x10000L )
-    return HB_Err_Invalid_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   cdf1->ClassValueArray = NULL;
 
@@ -970,7 +970,7 @@ static HB_Error  Load_ClassDef1( HB_ClassDefinition*  cd,
     cva[n] = GET_UShort();
     if ( cva[n] >= limit )
     {
-      error = HB_Err_Invalid_SubTable;
+      error = ERR(HB_Err_Invalid_SubTable);
       goto Fail;
     }
     d[cva[n]] = TRUE;
@@ -1040,7 +1040,7 @@ static HB_Error  Load_ClassDef2( HB_ClassDefinition*  cd,
     if ( crr[n].Start > crr[n].End ||
 	 crr[n].Class >= limit )
     {
-      error = HB_Err_Invalid_SubTable;
+      error = ERR(HB_Err_Invalid_SubTable);
       goto Fail;
     }
     d[crr[n].Class] = TRUE;
@@ -1093,7 +1093,7 @@ HB_Error  _HB_OPEN_Load_ClassDefinition( HB_ClassDefinition*  cd,
     break;
 
   default:
-    error = HB_Err_Invalid_SubTable_Format;
+    error = ERR(HB_Err_Invalid_SubTable_Format);
     break;
   }
 
@@ -1129,6 +1129,31 @@ HB_Error  _HB_OPEN_Load_EmptyClassDefinition( HB_ClassDefinition*  cd,
 
 Fail:
   FREE( cd->Defined );
+  return error;
+}
+
+HB_Error _HB_OPEN_Load_EmptyOrClassDefinition( HB_ClassDefinition*  cd,
+					       HB_UShort             limit,
+					       HB_UInt              class_offset,
+					       HB_UInt              base_offset,
+					       HB_Stream             stream )
+{
+  HB_Error error;
+  HB_UInt               cur_offset;
+
+  cur_offset = FILE_Pos();
+
+  if ( class_offset )
+    {
+      if ( !FILE_Seek( class_offset + base_offset ) )
+	error = _HB_OPEN_Load_ClassDefinition( cd, limit, stream );
+    }
+  else
+     error = _HB_OPEN_Load_EmptyClassDefinition ( cd, stream );
+
+  if (error == HB_Err_Ok)
+    (void)FILE_Seek( cur_offset ); /* Changes error as a side-effect */
+
   return error;
 }
 
@@ -1264,7 +1289,7 @@ HB_Error  _HB_OPEN_Get_Class( HB_ClassDefinition*  cd,
     return Get_Class2( &cd->cd.cd2, glyphID, class, index );
 
   default:
-    return HB_Err_Invalid_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -1298,7 +1323,7 @@ HB_Error  _HB_OPEN_Load_Device( HB_Device*  d,
 
   if ( d->StartSize > d->EndSize ||
        d->DeltaFormat == 0 || d->DeltaFormat > 3 )
-    return HB_Err_Invalid_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   d->DeltaValue = NULL;
 

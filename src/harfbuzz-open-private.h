@@ -46,6 +46,11 @@ HB_Error  _HB_OPEN_Load_ClassDefinition( HB_ClassDefinition*  cd,
 				HB_Stream             input );
 HB_Error  _HB_OPEN_Load_EmptyClassDefinition( HB_ClassDefinition*  cd,
 				     HB_Stream             input );
+HB_Error _HB_OPEN_Load_EmptyOrClassDefinition( HB_ClassDefinition*  cd,
+					       HB_UShort             limit,
+					       HB_UInt              class_offset,
+					       HB_UInt              base_offset,
+					       HB_Stream             stream );
 HB_Error  _HB_OPEN_Load_Device( HB_Device*  d,
 		       HB_Stream    input );
 

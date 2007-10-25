@@ -53,7 +53,7 @@ static HB_Error  default_mmfunc( HB_Font      font,
   HB_UNUSED(metric_id);
   HB_UNUSED(metric_value);
   HB_UNUSED(data);
-  return HB_Err_No_MM_Interpreter;
+  return ERR(HB_Err_Not_Covered);
 }
 
 
@@ -70,11 +70,8 @@ HB_Error  HB_Load_GPOS_Table( HB_Stream stream,
   HB_Error   error;
 
 
-  if ( !retptr )
-    return HB_Err_Invalid_Argument;
-
-  if ( !stream )
-    return HB_Err_Invalid_Face_Handle;
+  if ( !retptr || !stream )
+    return ERR(HB_Err_Invalid_Argument);
 
 
   base_offset = FILE_Pos();
@@ -654,7 +651,7 @@ static HB_Error  Load_Anchor( HB_Anchor*  an,
     break;
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;
@@ -872,7 +869,7 @@ static HB_Error  Load_SinglePos( HB_GPOS_SubTable* st,
   FORGET_Frame();
 
   if ( !format )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   cur_offset = FILE_Pos();
   if ( FILE_Seek( new_offset ) ||
@@ -913,7 +910,7 @@ static HB_Error  Load_SinglePos( HB_GPOS_SubTable* st,
     break;
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;
@@ -1014,7 +1011,7 @@ static HB_Error  Lookup_SinglePos( GPOS_Instance*    gpi,
 
   case 2:
     if ( index >= sp->spf.spf2.ValueCount )
-      return HB_Err_Invalid_GPOS_SubTable;
+      return ERR(HB_Err_Invalid_SubTable);
     error = Get_ValueRecord( gpi, &sp->spf.spf2.Value[index],
 			     sp->ValueFormat, POSITION( buffer->in_pos ) );
     if ( error )
@@ -1022,7 +1019,7 @@ static HB_Error  Lookup_SinglePos( GPOS_Instance*    gpi,
     break;
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
   }
 
   (buffer->in_pos)++;
@@ -1423,7 +1420,7 @@ static HB_Error  Load_PairPos( HB_GPOS_SubTable* st,
     break;
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;
@@ -1473,11 +1470,11 @@ static HB_Error  Lookup_PairPos1( GPOS_Instance*       gpi,
 
 
   if ( index >= ppf1->PairSetCount )
-     return HB_Err_Invalid_GPOS_SubTable;
+     return ERR(HB_Err_Invalid_SubTable);
 
   pvr = ppf1->PairSet[index].PairValueRecord;
   if ( !pvr )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   glyph2 = IN_CURGLYPH();
 
@@ -1525,7 +1522,7 @@ static HB_Error  Lookup_PairPos2( GPOS_Instance*       gpi,
 
   c1r = &ppf2->Class1Record[cl1];
   if ( !c1r )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
   c2r = &c1r->Class2Record[cl2];
 
   error = Get_ValueRecord( gpi, &c2r->Value1, format1, POSITION( first_pos ) );
@@ -1597,7 +1594,7 @@ static HB_Error  Lookup_PairPos( GPOS_Instance*    gpi,
     break;
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   /* if we don't have coverage for the second glyph don't skip it for
@@ -1802,7 +1799,7 @@ static HB_Error  Lookup_CursivePos( GPOS_Instance*    gpi,
   }
 
   if ( index >= cp->EntryExitCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   eer = &cp->EntryExitRecord[index];
 
@@ -2118,7 +2115,7 @@ static HB_Error  Load_MarkBasePos( HB_GPOS_SubTable* st,
   FORGET_Frame();
 
   if (mbp->PosFormat != 1)
-    return HB_Err_Invalid_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
 
   cur_offset = FILE_Pos();
   if ( FILE_Seek( new_offset ) ||
@@ -2265,18 +2262,18 @@ static HB_Error  Lookup_MarkBasePos( GPOS_Instance*    gpi,
   ma = &mbp->MarkArray;
 
   if ( mark_index >= ma->MarkCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   class       = ma->MarkRecord[mark_index].Class;
   mark_anchor = &ma->MarkRecord[mark_index].MarkAnchor;
 
   if ( class >= mbp->ClassCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   ba = &mbp->BaseArray;
 
   if ( base_index >= ba->BaseCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   br          = &ba->BaseRecord[base_index];
   base_anchor = &br->BaseAnchor[class];
@@ -2676,18 +2673,18 @@ static HB_Error  Lookup_MarkLigPos( GPOS_Instance*    gpi,
   ma = &mlp->MarkArray;
 
   if ( mark_index >= ma->MarkCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   class       = ma->MarkRecord[mark_index].Class;
   mark_anchor = &ma->MarkRecord[mark_index].MarkAnchor;
 
   if ( class >= mlp->ClassCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   la = &mlp->LigatureArray;
 
   if ( lig_index >= la->LigatureCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   lat = &la->LigatureAttach[lig_index];
 
@@ -3016,18 +3013,18 @@ static HB_Error  Lookup_MarkMarkPos( GPOS_Instance*    gpi,
   ma1 = &mmp->Mark1Array;
 
   if ( mark1_index >= ma1->MarkCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   class        = ma1->MarkRecord[mark1_index].Class;
   mark1_anchor = &ma1->MarkRecord[mark1_index].MarkAnchor;
 
   if ( class >= mmp->ClassCount )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   ma2 = &mmp->Mark2Array;
 
   if ( mark2_index >= ma2->Mark2Count )
-    return HB_Err_Invalid_GPOS_SubTable;
+    return ERR(HB_Err_Invalid_SubTable);
 
   m2r          = &ma2->Mark2Record[mark2_index];
   mark2_anchor = &m2r->Mark2Anchor[class];
@@ -3774,7 +3771,7 @@ static HB_Error  Load_ContextPos( HB_GPOS_SubTable* st,
     return Load_ContextPos3( &cp->cpf.cpf3, stream );
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -3912,7 +3909,7 @@ static HB_Error  Lookup_ContextPos2( GPOS_Instance*          gpi,
   pcs = &cpf2->PosClassSet[classes[0]];
   if ( !pcs )
   {
-    error = HB_Err_Invalid_GPOS_SubTable;
+    error = ERR(HB_Err_Invalid_SubTable);
     goto End;
   }
 
@@ -4050,7 +4047,7 @@ static HB_Error  Lookup_ContextPos( GPOS_Instance*    gpi,
 			       flags, context_length, nesting_level );
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -4622,31 +4619,6 @@ static void  Free_ChainPosClassSet( HB_ChainPosClassSet*  cpcs )
 }
 
 
-static HB_Error GPOS_Load_EmptyOrClassDefinition( HB_ClassDefinition*  cd,
-					     HB_UShort             limit,
-					     HB_UInt              class_offset,
-					     HB_UInt              base_offset,
-					     HB_Stream             stream )
-{
-  HB_Error error;
-  HB_UInt               cur_offset;
-
-  cur_offset = FILE_Pos();
-
-  if ( class_offset )
-    {
-      if ( !FILE_Seek( class_offset + base_offset ) )
-	error = _HB_OPEN_Load_ClassDefinition( cd, limit, stream );
-    }
-  else
-     error = _HB_OPEN_Load_EmptyClassDefinition ( cd, stream );
-
-  if (error == HB_Err_Ok)
-    (void)FILE_Seek( cur_offset ); /* Changes error as a side-effect */
-
-  return error;
-}
-
 /* ChainContextPosFormat2 */
 
 static HB_Error  Load_ChainContextPos2( HB_ChainContextPosFormat2*  ccpf2,
@@ -4691,17 +4663,17 @@ static HB_Error  Load_ChainContextPos2( HB_ChainContextPosFormat2*  ccpf2,
 
   FORGET_Frame();
 
-  if ( ( error = GPOS_Load_EmptyOrClassDefinition( &ccpf2->BacktrackClassDef, 65535,
-					      backtrack_offset, base_offset,
-					      stream ) ) != HB_Err_Ok )
+  if ( ( error = _HB_OPEN_Load_EmptyOrClassDefinition( &ccpf2->BacktrackClassDef, 65535,
+						       backtrack_offset, base_offset,
+						       stream ) ) != HB_Err_Ok )
     goto Fail5;
-  if ( ( error = GPOS_Load_EmptyOrClassDefinition( &ccpf2->InputClassDef, count,
-					      input_offset, base_offset,
-					      stream ) ) != HB_Err_Ok )
+  if ( ( error = _HB_OPEN_Load_EmptyOrClassDefinition( &ccpf2->InputClassDef, count,
+						       input_offset, base_offset,
+						       stream ) ) != HB_Err_Ok )
     goto Fail4;
-  if ( ( error = GPOS_Load_EmptyOrClassDefinition( &ccpf2->LookaheadClassDef, 65535,
-					      lookahead_offset, base_offset,
-					      stream ) ) != HB_Err_Ok )
+  if ( ( error = _HB_OPEN_Load_EmptyOrClassDefinition( &ccpf2->LookaheadClassDef, 65535,
+						       lookahead_offset, base_offset,
+						       stream ) ) != HB_Err_Ok )
     goto Fail3;
 
   ccpf2->ChainPosClassSet   = NULL;
@@ -5032,7 +5004,7 @@ static HB_Error  Load_ChainContextPos( HB_GPOS_SubTable* st,
     return Load_ChainContextPos3( &ccp->ccpf.ccpf3, stream );
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -5252,7 +5224,7 @@ static HB_Error  Lookup_ChainContextPos2(
   cpcs = &ccpf2->ChainPosClassSet[input_classes[0]];
   if ( !cpcs )
   {
-    error = HB_Err_Invalid_GPOS_SubTable;
+    error = ERR(HB_Err_Invalid_SubTable);
     goto End1;
   }
 
@@ -5530,7 +5502,7 @@ static HB_Error  Lookup_ChainContextPos(
 				    nesting_level );
 
   default:
-    return HB_Err_Invalid_GPOS_SubTable_Format;
+    return ERR(HB_Err_Invalid_SubTable_Format);
   }
 
   return HB_Err_Ok;               /* never reached */
@@ -5555,7 +5527,7 @@ HB_Error  HB_GPOS_Select_Script( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !script_index )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
@@ -5588,13 +5560,13 @@ HB_Error  HB_GPOS_Select_Language( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !language_index || !req_feature_index )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
 
   if ( script_index >= sl->ScriptCount )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   s   = &sr[script_index].Script;
   lsr = s->LangSysRecord;
@@ -5636,7 +5608,7 @@ HB_Error  HB_GPOS_Select_Feature( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !feature_index )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
@@ -5645,7 +5617,7 @@ HB_Error  HB_GPOS_Select_Feature( HB_GPOSHeader*  gpos,
   fr = fl->FeatureRecord;
 
   if ( script_index >= sl->ScriptCount )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   s   = &sr[script_index].Script;
   lsr = s->LangSysRecord;
@@ -5655,7 +5627,7 @@ HB_Error  HB_GPOS_Select_Feature( HB_GPOSHeader*  gpos,
   else
   {
     if ( language_index >= s->LangSysCount )
-      return HB_Err_Invalid_Argument;
+      return ERR(HB_Err_Invalid_Argument);
 
     ls = &lsr[language_index].LangSys;
   }
@@ -5665,7 +5637,7 @@ HB_Error  HB_GPOS_Select_Feature( HB_GPOSHeader*  gpos,
   for ( n = 0; n < ls->FeatureCount; n++ )
   {
     if ( fi[n] >= fl->FeatureCount )
-      return HB_Err_Invalid_GPOS_SubTable_Format;
+      return ERR(HB_Err_Invalid_SubTable_Format);
 
     if ( feature_tag == fr[fi[n]].FeatureTag )
     {
@@ -5694,7 +5666,7 @@ HB_Error  HB_GPOS_Query_Scripts( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !script_tag_list )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
@@ -5728,13 +5700,13 @@ HB_Error  HB_GPOS_Query_Languages( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !language_tag_list )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
 
   if ( script_index >= sl->ScriptCount )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   s   = &sr[script_index].Script;
   lsr = s->LangSysRecord;
@@ -5777,7 +5749,7 @@ HB_Error  HB_GPOS_Query_Features( HB_GPOSHeader*  gpos,
 
 
   if ( !gpos || !feature_tag_list )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   sl = &gpos->ScriptList;
   sr = sl->ScriptRecord;
@@ -5786,7 +5758,7 @@ HB_Error  HB_GPOS_Query_Features( HB_GPOSHeader*  gpos,
   fr = fl->FeatureRecord;
 
   if ( script_index >= sl->ScriptCount )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   s   = &sr[script_index].Script;
   lsr = s->LangSysRecord;
@@ -5796,7 +5768,7 @@ HB_Error  HB_GPOS_Query_Features( HB_GPOSHeader*  gpos,
   else
   {
     if ( language_index >= s->LangSysCount )
-      return HB_Err_Invalid_Argument;
+      return ERR(HB_Err_Invalid_Argument);
 
     ls = &lsr[language_index].LangSys;
   }
@@ -5811,7 +5783,7 @@ HB_Error  HB_GPOS_Query_Features( HB_GPOSHeader*  gpos,
     if ( fi[n] >= fl->FeatureCount )
     {
       FREE( ftl );
-      return HB_Err_Invalid_GPOS_SubTable_Format;
+      return ERR(HB_Err_Invalid_SubTable_Format);
     }
     ftl[n] = fr[fi[n]].FeatureTag;
   }
@@ -5861,7 +5833,7 @@ static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
   nesting_level++;
 
   if ( nesting_level > HB_MAX_NESTING_LEVEL )
-    return HB_Err_Too_Many_Nested_Contexts;
+    return ERR(HB_Err_Not_Covered);
 
   lookup_count = gpos->LookupList.LookupCount;
   if (lookup_index >= lookup_count)
@@ -5898,7 +5870,7 @@ static HB_Error  Load_DefaultPos( HB_GPOS_SubTable* st,
 {
   HB_UNUSED(st);
   HB_UNUSED(stream);
-  return HB_Err_Invalid_GPOS_SubTable_Format;
+  return ERR(HB_Err_Invalid_SubTable_Format);
 }
 
 typedef HB_Error  (*Load_Pos_Func_Type)( HB_GPOS_SubTable* st,
@@ -6061,7 +6033,7 @@ HB_Error  HB_GPOS_Add_Feature( HB_GPOSHeader*  gpos,
   if ( !gpos ||
        feature_index >= gpos->FeatureList.FeatureCount ||
        gpos->FeatureList.ApplyCount == gpos->FeatureList.FeatureCount )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   gpos->FeatureList.ApplyOrder[gpos->FeatureList.ApplyCount++] = feature_index;
 
@@ -6091,7 +6063,7 @@ HB_Error  HB_GPOS_Clear_Features( HB_GPOSHeader*  gpos )
 
 
   if ( !gpos )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   gpos->FeatureList.ApplyCount = 0;
 
@@ -6110,7 +6082,7 @@ HB_Error  HB_GPOS_Register_MM_Function( HB_GPOSHeader*  gpos,
 					void*            data )
 {
   if ( !gpos )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   gpos->mmfunc = mmfunc;
   gpos->data   = data;
@@ -6136,7 +6108,7 @@ HB_Error  HB_GPOS_Apply_String( HB_Font            font,
 
   if ( !font || !gpos ||
        !buffer || buffer->in_length == 0 || buffer->in_pos >= buffer->in_length )
-    return HB_Err_Invalid_Argument;
+    return ERR(HB_Err_Invalid_Argument);
 
   gpi.font       = font;
   gpi.gpos       = gpos;

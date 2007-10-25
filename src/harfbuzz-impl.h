@@ -73,6 +73,7 @@ HB_BEGIN_HEADER
                                                     (glyph_index), (component), (ligID)  \
                                                   ) ) != HB_Err_Ok )
 
+#define ERR(err) (err)
 
 HB_END_HEADER
 

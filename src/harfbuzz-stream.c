@@ -8,6 +8,7 @@
  *
  ******************************************************************/
 #include "harfbuzz-stream.h"
+#include "harfbuzz-impl.h"
 #include <stdlib.h>
 
 #if 0
@@ -50,7 +51,7 @@ HB_Error _hb_stream_seek(HB_Stream stream, HB_UInt pos)
     
     stream->pos = pos;
     if (pos > stream->size)
-        error = HB_Err_Invalid_Stream_Operation;
+        error = ERR(HB_Err_Read_Error);
     
     LOG(( "stream:seek(%ld) -> %d\n", pos, error ));
     return error;
@@ -61,7 +62,7 @@ HB_Error _hb_stream_frame_enter(HB_Stream stream, HB_UInt count)
 {
     /* check current and new position */
     if (stream->pos + count > stream->size) 
-        return HB_Err_Invalid_Stream_Operation;
+        return ERR(HB_Err_Read_Error);
 
     /* set cursor */
     stream->cursor = stream->base + stream->pos;

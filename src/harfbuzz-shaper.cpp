@@ -966,7 +966,7 @@ HB_Face HB_NewFace(void *font, HB_GetFontTableFunc tableFunc)
     stream = getTableStream(font, tableFunc, TTAG_GSUB);
     if (!stream || (error = HB_Load_GSUB_Table(stream, &face->gsub, face->gdef, gdefStream))) {
         face->gsub = 0;
-        if (error != HB_Err_Table_Missing) {
+        if (error != HB_Err_Not_Covered) {
             //DEBUG("error loading gsub table: %d", error);
         } else {
             //DEBUG("face doesn't have a gsub table");
