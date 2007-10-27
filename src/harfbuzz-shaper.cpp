@@ -667,7 +667,7 @@ void HB_GetWordBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
 {
     if (stringLength == 0)
         return;
-    uint brk = HB_GetWordClass(string[0]);
+    unsigned int brk = HB_GetWordClass(string[0]);
     attributes[0].wordBoundary = true;
     for (hb_uint32 i = 1; i < stringLength; ++i) {
         if (!attributes[i].charStop) {
