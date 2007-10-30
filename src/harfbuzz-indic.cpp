@@ -1793,10 +1793,12 @@ HB_Bool HB_IndicShape(HB_ShaperItem *item)
         }
         // fix logcluster array
         IDEBUG("syllable:");
-        for (hb_uint32 i = first_glyph; i < first_glyph + syllable.num_glyphs; ++i)
-            IDEBUG("        %d -> glyph %x", i, item->glyphs[i]);
+        hb_uint32 g;
+        for (g = first_glyph; g < first_glyph + syllable.num_glyphs; ++g)
+            IDEBUG("        %d -> glyph %x", g, item->glyphs[g]);
         IDEBUG("    logclusters:");
-        for (int i = sstart; i < send; ++i) {
+        int i;
+        for (i = sstart; i < send; ++i) {
             IDEBUG("        %d -> glyph %d", i, first_glyph);
             logClusters[i-item->item.pos] = first_glyph;
         }

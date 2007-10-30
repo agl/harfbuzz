@@ -428,7 +428,8 @@ void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item)
     unsigned short *logClusters = item->log_clusters;
 
     hb_uint32 glyph_pos = 0;
-    for (hb_uint32 i = 0; i < length; i++) {
+    hb_uint32 i;
+    for (i = 0; i < length; i++) {
         if (HB_IsHighSurrogate(uc[i]) && i < length - 1
             && HB_IsLowSurrogate(uc[i + 1])) {
             logClusters[i] = glyph_pos;
@@ -451,7 +452,7 @@ void HB_HeuristicSetGlyphAttributes(HB_ShaperItem *item)
     HB_CharCategory lastCat;
     int dummy;
     HB_GetUnicodeCharProperties(uc[0], &lastCat, &dummy);
-    for (hb_uint32 i = 1; i < length; ++i) {
+    for (i = 1; i < length; ++i) {
         if (logClusters[i] == pos)
             // same glyph
             continue;
