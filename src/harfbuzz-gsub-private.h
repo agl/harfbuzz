@@ -13,7 +13,8 @@
 #ifndef HARFBUZZ_GSUB_PRIVATE_H
 #define HARFBUZZ_GSUB_PRIVATE_H
 
-#include "harfbuzz-stream.h"
+#include "harfbuzz-impl.h"
+#include "harfbuzz-stream-private.h"
 #include "harfbuzz-gsub.h"
 
 HB_BEGIN_HEADER
@@ -403,6 +404,19 @@ struct  HB_ChainContextSubst_
 typedef struct HB_ChainContextSubst_  HB_ChainContextSubst;
 
 
+#if 0
+/* LookupType 7 */
+struct HB_ExtensionSubst_
+{
+  HB_UShort      SubstFormat;         /* always 1 */
+  HB_UShort      LookuptType;         /* lookup-type of referenced subtable */
+  HB_GSUB_SubTable *subtable;         /* referenced subtable */
+};
+
+typedef struct HB_ExtensionSubst_  HB_ExtensionSubst;
+#endif
+
+
 /* LookupType 8 */
 struct HB_ReverseChainContextSubst_
 {
@@ -435,12 +449,13 @@ union  HB_GSUB_SubTable_
 
 
 
-
-HB_Error  _HB_GSUB_Load_SubTable( HB_GSUB_SubTable*  st,
+HB_INTERNAL HB_Error
+_HB_GSUB_Load_SubTable( HB_GSUB_SubTable* st,
 				  HB_Stream     stream,
 				  HB_UShort     lookup_type );
 
-void  _HB_GSUB_Free_SubTable( HB_GSUB_SubTable*  st,
+HB_INTERNAL void
+_HB_GSUB_Free_SubTable( HB_GSUB_SubTable* st,
 			      HB_UShort     lookup_type );
 
 HB_END_HEADER

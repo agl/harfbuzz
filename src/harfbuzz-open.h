@@ -13,7 +13,7 @@
 #ifndef HARFBUZZ_OPEN_H
 #define HARFBUZZ_OPEN_H
 
-#include <harfbuzz-global.h>
+#include "harfbuzz-global.h"
 
 HB_BEGIN_HEADER
 
@@ -23,6 +23,7 @@ HB_BEGIN_HEADER
 #define HB_DEFAULT_LANGUAGE              0xFFFF
 
 #define HB_MAX_NESTING_LEVEL             100
+
 
 /* Script list related structures */
 

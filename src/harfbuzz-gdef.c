@@ -13,7 +13,6 @@
 #include "harfbuzz-impl.h"
 #include "harfbuzz-gdef-private.h"
 #include "harfbuzz-open-private.h"
-#include "harfbuzz-stream.h"
 
 static HB_Error  Load_AttachList( HB_AttachList*  al,
 				  HB_Stream        stream );
@@ -166,6 +165,9 @@ HB_Error  HB_Load_GDEF_Table( HB_Stream stream,
 
   if ( !retptr )
     return ERR(HB_Err_Invalid_Argument);
+
+  if ( GOTO_Table( TTAG_GDEF ) )
+    return error;
 
   if (( error = HB_New_GDEF_Table ( &gdef ) ))
     return error;
@@ -760,7 +762,7 @@ HB_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
 				      HB_UShort        glyphID,
 				      HB_UShort*       property )
 {
-  HB_UShort class, index;
+  HB_UShort class = 0, index = 0; /* shut compiler up */
 
   HB_Error  error;
 
@@ -794,6 +796,7 @@ HB_Error  HB_GDEF_Get_Glyph_Property( HB_GDEFHeader*  gdef,
 
   switch ( class )
   {
+  default:
   case UNCLASSIFIED_GLYPH:
     *property = 0;
     break;
@@ -834,7 +837,6 @@ static HB_Error  Make_ClassRange( HB_ClassDefinition*  cd,
   cdf2 = &cd->cd.cd2;
 
   if ( REALLOC_ARRAY( cdf2->ClassRangeRecord,
-		      cdf2->ClassRangeCount,
 		      cdf2->ClassRangeCount + 1 ,
 		      HB_ClassRangeRecord ) )
     return error;
@@ -899,7 +901,7 @@ HB_Error  HB_GDEF_Build_ClassDefinition( HB_GDEFHeader*  gdef,
 
   glyph_count--;
 
-  for ( n = 0; n <= glyph_count; n++ )
+  for ( n = 0; n < glyph_count + 1; n++ )
   {
     if ( curr_glyph == glyph_array[n] && curr_class == class_array[n] )
     {
@@ -1055,12 +1057,13 @@ static void  Free_NewGlyphClasses( HB_GDEFHeader*  gdef )
 }
 
 
-HB_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
+HB_INTERNAL HB_Error
+_HB_GDEF_Add_Glyph_Property( HB_GDEFHeader* gdef,
 			      HB_UShort        glyphID,
 			      HB_UShort        property )
 {
   HB_Error               error;
-  HB_UShort              class, new_class, index;
+  HB_UShort              class, new_class, index = 0; /* shut compiler up */
   HB_UShort              byte, bits, mask;
   HB_UShort              array_index, glyph_index, count;
 
@@ -1140,7 +1143,8 @@ HB_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*  gdef,
 }
 
 
-HB_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*  gdef,
+HB_INTERNAL HB_Error
+_HB_GDEF_Check_Property( HB_GDEFHeader* gdef,
 			  HB_GlyphItem    gitem,
 			  HB_UShort        flags,
 			  HB_UShort*       property )
@@ -1195,10 +1199,11 @@ HB_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*  gdef,
   return HB_Err_Ok;
 }
 
-HB_Error _HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( HB_GDEFHeader* gdef,
-							   HB_Stream      stream,
-							   HB_Lookup*     lo,
-							   HB_UShort      num_lookups)
+HB_INTERNAL HB_Error
+_HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( HB_GDEFHeader* gdef,
+						  HB_Stream      stream,
+						  HB_Lookup*     lo,
+						  HB_UShort      num_lookups)
 {
   HB_Error   error = HB_Err_Ok;
   HB_UShort  i;

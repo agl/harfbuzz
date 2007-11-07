@@ -21,8 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "harfbuzz-open.h"
-
+#include "harfbuzz.h"
 #include "harfbuzz-dump.h"
 
 #define N_ELEMENTS(arr) (sizeof(arr)/ sizeof((arr)[0]))
@@ -79,44 +78,6 @@ maybe_add_feature (HB_GSUB  gsub,
 
   if ((error = HB_GSUB_Add_Feature (gsub, feature_index, property)))
     croak ("HB_GSUB_Add_Feature", error);
-}
-
-static void
-select_cmap (FT_Face face)
-{
-  HB_UShort  i;
-  HB_CharMap cmap = NULL;
-  
-  for (i = 0; i < face->num_charmaps; i++)
-    {
-      if (face->charmaps[i]->platform_id == 3 && face->charmaps[i]->encoding_id == 1)
-	{
-	  cmap = face->charmaps[i];
-	  break;
-	}
-    }
-  
-  /* we try only pid/eid (0,0) if no (3,1) map is found -- many Windows
-     fonts have only rudimentary (0,0) support.                         */
-
-  if (!cmap)
-    for (i = 0; i < face->num_charmaps; i++)
-      {
-	if (face->charmaps[i]->platform_id == 3 && face->charmaps[i]->encoding_id == 1)
-	  {
-	    cmap = face->charmaps[i];
-	    break;
-	  }
-      }
-
-  if (cmap)
-    FT_Set_Charmap (face, cmap);
-  else
-    {
-      fprintf (stderr, "Sorry, but this font doesn't contain"
-	       " any Unicode mapping table.\n");
-      exit (1);
-    }
 }
 
 static void

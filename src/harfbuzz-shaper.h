@@ -10,11 +10,12 @@
 #ifndef HARFBUZZ_SHAPER_H
 #define HARFBUZZ_SHAPER_H
 
-#include <harfbuzz-global.h>
-#include <harfbuzz-gdef.h>
-#include <harfbuzz-gpos.h>
-#include <harfbuzz-gsub.h>
-#include <harfbuzz-external.h>
+#include "harfbuzz-global.h"
+#include "harfbuzz-gdef.h"
+#include "harfbuzz-gpos.h"
+#include "harfbuzz-gsub.h"
+#include "harfbuzz-external.h"
+#include "harfbuzz-stream-private.h"
 
 HB_BEGIN_HEADER
 

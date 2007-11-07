@@ -13,7 +13,8 @@
 #ifndef HARFBUZZ_GPOS_PRIVATE_H
 #define HARFBUZZ_GPOS_PRIVATE_H
 
-#include "harfbuzz-stream.h"
+#include "harfbuzz-impl.h"
+#include "harfbuzz-stream-private.h"
 #include "harfbuzz-gpos.h"
 
 HB_BEGIN_HEADER
@@ -655,6 +656,19 @@ struct  HB_ChainContextPos_
 typedef struct HB_ChainContextPos_  HB_ChainContextPos;
 
 
+#if 0
+/* LookupType 10 */
+struct HB_ExtensionPos_
+{
+  HB_UShort      PosFormat;           /* always 1 */
+  HB_UShort      LookuptType;         /* lookup-type of referenced subtable */
+  HB_GPOS_SubTable *subtable;         /* referenced subtable */
+};
+
+typedef struct HB_ExtensionPos_  HB_ExtensionPos;
+#endif
+
+
 union  HB_GPOS_SubTable_
 {
   HB_SinglePos        single;
@@ -671,11 +685,13 @@ typedef union HB_GPOS_SubTable_  HB_GPOS_SubTable;
 
 
 
-HB_Error  _HB_GPOS_Load_SubTable( HB_GPOS_SubTable*  st,
+HB_INTERNAL HB_Error
+_HB_GPOS_Load_SubTable( HB_GPOS_SubTable* st,
 				  HB_Stream     stream,
 				  HB_UShort     lookup_type );
 
-void  _HB_GPOS_Free_SubTable( HB_GPOS_SubTable*  st,
+HB_INTERNAL void
+_HB_GPOS_Free_SubTable( HB_GPOS_SubTable* st,
 			      HB_UShort     lookup_type );
 
 HB_END_HEADER

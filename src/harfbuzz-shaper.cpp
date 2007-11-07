@@ -11,8 +11,7 @@
 #include "harfbuzz-shaper.h"
 #include "harfbuzz-shaper-private.h"
 
-#include "harfbuzz-global.h"
-#include "harfbuzz-impl.h"
+#include "harfbuzz-stream-private.h"
 #include <assert.h>
 #include <stdio.h>
 
@@ -928,7 +927,7 @@ static HB_Stream getTableStream(void *font, HB_GetFontTableFunc tableFunc, HB_Ta
     stream->base = (HB_Byte*)malloc(length);
     error = tableFunc(font, tag, stream->base, &length);
     if (error) {
-        HB_close_stream(stream);
+        _hb_close_stream(stream);
         return 0;
     }
     stream->size = length;
@@ -972,16 +971,16 @@ HB_Face HB_NewFace(void *font, HB_GetFontTableFunc tableFunc)
             //DEBUG("face doesn't have a gsub table");
         }
     }
-    HB_close_stream(stream);
+    _hb_close_stream(stream);
 
     stream = getTableStream(font, tableFunc, TTAG_GPOS);
     if (!stream || (error = HB_Load_GPOS_Table(stream, &face->gpos, face->gdef, gdefStream))) {
         face->gpos = 0;
         DEBUG("error loading gpos table: %d", error);
     }
-    HB_close_stream(stream);
+    _hb_close_stream(stream);
 
-    HB_close_stream(gdefStream);
+    _hb_close_stream(gdefStream);
 
     for (unsigned int i = 0; i < HB_ScriptCount; ++i)
         face->supported_scripts[i] = checkScript(face, i);

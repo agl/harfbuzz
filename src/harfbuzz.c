@@ -10,13 +10,11 @@
  *  See the file name COPYING for licensing information.
  *
  ******************************************************************/
-#include "harfbuzz-global.c"
-#include "harfbuzz-stream.c"
-#include "harfbuzz-open.c"
+#define HB_INTERNAL static
 #include "harfbuzz-buffer.c"
 #include "harfbuzz-gdef.c"
 #include "harfbuzz-gsub.c"
 #include "harfbuzz-gpos.c"
-#ifdef HARFBUZZ_DUMP
-#include "harfbuzz-dump.c"
-#endif
+#include "harfbuzz-impl.c"
+#include "harfbuzz-open.c"
+#include "harfbuzz-stream.c"

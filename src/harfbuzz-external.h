@@ -10,7 +10,7 @@
 #ifndef HARFBUZZ_EXTERNAL_H
 #define HARFBUZZ_EXTERNAL_H
 
-#include <harfbuzz-global.h>
+#include "harfbuzz-global.h"
 
 HB_BEGIN_HEADER
 

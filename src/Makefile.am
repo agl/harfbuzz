@@ -3,13 +3,13 @@
 noinst_LTLIBRARIES = libharfbuzz-1.la
 
 MAINSOURCES =  \
-	harfbuzz-global.c \
 	harfbuzz-buffer.c \
 	harfbuzz-stream.c \
 	harfbuzz-dump.c \
 	harfbuzz-gdef.c \
 	harfbuzz-gpos.c \
 	harfbuzz-gsub.c \
+	harfbuzz-impl.c \
 	harfbuzz-open.c \
 	harfbuzz-shaper.cpp \
 	harfbuzz-tibetan.c \
@@ -32,11 +32,13 @@ PUBLICHEADERS = \
 	harfbuzz-open.h \
 	harfbuzz-global.h \
 	harfbuzz-external.h \
-	harfbuzz-shaper.h
+	harfbuzz-shaper.h \
+	harfbuzz-stream.h
 
 PRIVATEHEADERS = \
 	harfbuzz-impl.h \
-	harfbuzz-stream.h \
+	harfbuzz-buffer-private.h \
+	harfbuzz-stream-private.h \
 	harfbuzz-gdef-private.h \
 	harfbuzz-gpos-private.h \
 	harfbuzz-gsub-private.h \

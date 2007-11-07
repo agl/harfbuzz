@@ -13,8 +13,10 @@
 #ifndef HARFBUZZ_GDEF_PRIVATE_H
 #define HARFBUZZ_GDEF_PRIVATE_H
 
+#include "harfbuzz-impl.h"
+#include "harfbuzz-stream-private.h"
+#include "harfbuzz-buffer-private.h"
 #include "harfbuzz-gdef.h"
-#include "harfbuzz-buffer.h"
 
 HB_BEGIN_HEADER
 
@@ -87,19 +89,22 @@ struct  HB_LigGlyph_
 };
 
 
-HB_Error  _HB_GDEF_Add_Glyph_Property( HB_GDEFHeader*   gdef,
+HB_INTERNAL HB_Error
+_HB_GDEF_Add_Glyph_Property( HB_GDEFHeader* gdef,
 				       HB_UShort        glyphID,
 				       HB_UShort        property );
 
-HB_Error  _HB_GDEF_Check_Property( HB_GDEFHeader*   gdef,
+HB_INTERNAL HB_Error
+_HB_GDEF_Check_Property( HB_GDEFHeader* gdef,
 				   HB_GlyphItem    item,
 				   HB_UShort        flags,
 				   HB_UShort*       property );
 
-HB_Error _HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( HB_GDEFHeader* gdef,
-							   HB_Stream      stream,
-							   HB_Lookup*     lo,
-							   HB_UShort      num_lookups );
+HB_INTERNAL HB_Error
+_HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( HB_GDEFHeader* gdef,
+						  HB_Stream      stream,
+						  HB_Lookup*     lo,
+						  HB_UShort      num_lookups );
 
 HB_END_HEADER
 

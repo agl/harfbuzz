@@ -4,6 +4,7 @@
  *  David Turner, Robert Wilhelm, and Werner Lemberg.
  *
  *  Copyright 2006  Behdad Esfahbod
+ *  Copyright 2007  Red Hat Software
  *
  *  This is part of HarfBuzz, an OpenType Layout engine library.
  *
@@ -53,7 +54,7 @@ static HB_Error  default_mmfunc( HB_Font      font,
   HB_UNUSED(metric_id);
   HB_UNUSED(metric_value);
   HB_UNUSED(data);
-  return ERR(HB_Err_Not_Covered);
+  return ERR(HB_Err_Not_Covered); /* ERR() call intended */
 }
 
 
@@ -70,9 +71,11 @@ HB_Error  HB_Load_GPOS_Table( HB_Stream stream,
   HB_Error   error;
 
 
-  if ( !retptr || !stream )
+  if ( !retptr )
     return ERR(HB_Err_Invalid_Argument);
 
+  if ( GOTO_Table( TTAG_GPOS ) )
+    return error;
 
   base_offset = FILE_Pos();
 
@@ -126,15 +129,6 @@ HB_Error  HB_Load_GPOS_Table( HB_Stream stream,
     goto Fail2;
 
   gpos->gdef = gdef;      /* can be NULL */
-
-  /* We now check the LookupFlags for values larger than 0xFF to find
-     out whether we need to load the `MarkAttachClassDef' field of the
-     GDEF table -- this hack is necessary for OpenType 1.2 tables since
-     the version field of the GDEF table hasn't been incremented.
-
-     For constructed GDEF tables, we only load it if
-     `MarkAttachClassDef_offset' is not zero (nevertheless, a build of
-     a constructed mark attach table is not supported currently).       */
 
   if ( ( error =  _HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( gdef, gdefStream,
 								     gpos->LookupList.Lookup,
@@ -550,6 +544,7 @@ static HB_Error  Load_Anchor( HB_Anchor*  an,
 			      HB_Stream    stream )
 {
   HB_Error  error;
+
   HB_UInt cur_offset, new_offset, base_offset;
 
 
@@ -698,6 +693,7 @@ static HB_Error  Get_Anchor( GPOS_Instance*   gpi,
   {
   case 0:
     /* The special case of an empty AnchorTable */
+  default:
 
     return HB_Err_Not_Covered;
 
@@ -955,25 +951,11 @@ static void  Free_SinglePos( HB_GPOS_SubTable* st )
       FREE( v );
     }
     break;
+  default:
+    break;
   }
 
   _HB_OPEN_Free_Coverage( &sp->Coverage );
-}
-
-static HB_Error  Lookup_DefaultPos(  GPOS_Instance*    gpi,
-				     HB_GPOS_SubTable* st,
-				     HB_Buffer        buffer,
-				     HB_UShort         flags,
-				     HB_UShort         context_length,
-				     int               nesting_level )
-{
-  HB_UNUSED(gpi);
-  HB_UNUSED(st);
-  HB_UNUSED(buffer);
-  HB_UNUSED(flags);
-  HB_UNUSED(context_length);
-  HB_UNUSED(nesting_level);
-  return HB_Err_Not_Covered;
 }
 
 static HB_Error  Lookup_SinglePos( GPOS_Instance*    gpi,
@@ -1449,6 +1431,9 @@ static void  Free_PairPos( HB_GPOS_SubTable* st )
   case 2:
     Free_PairPos2( &pp->ppf.ppf2, format1, format2 );
     break;
+
+  default:
+    break;
   }
 
   _HB_OPEN_Free_Coverage( &pp->Coverage );
@@ -1505,7 +1490,7 @@ static HB_Error  Lookup_PairPos2( GPOS_Instance*       gpi,
 				  HB_UShort            format2 )
 {
   HB_Error           error;
-  HB_UShort          cl1, cl2;
+  HB_UShort          cl1 = 0, cl2 = 0; /* shut compiler up */
 
   HB_Class1Record*  c1r;
   HB_Class2Record*  c2r;
@@ -2027,7 +2012,10 @@ static HB_Error  Load_BaseArray( HB_BaseArray*  ba,
       FORGET_Frame();
 
       if (new_offset == base_offset) {
-	/* Doulos SIL Regular is buggy and has zer offsets here.  Skip */
+	/* XXX
+	 * Doulos SIL Regular is buggy and has zero offsets here.
+	 * Skip it
+	 */
 	ban[n].PosFormat = 0;
 	continue;
       }
@@ -3784,17 +3772,10 @@ static void  Free_ContextPos( HB_GPOS_SubTable* st )
 
   switch ( cp->PosFormat )
   {
-  case 1:
-    Free_ContextPos1( &cp->cpf.cpf1 );
-    break;
-
-  case 2:
-    Free_ContextPos2( &cp->cpf.cpf2 );
-    break;
-
-  case 3:
-    Free_ContextPos3( &cp->cpf.cpf3 );
-    break;
+  case 1:  Free_ContextPos1( &cp->cpf.cpf1 ); break;
+  case 2:  Free_ContextPos2( &cp->cpf.cpf2 ); break;
+  case 3:  Free_ContextPos3( &cp->cpf.cpf3 ); break;
+  default:					      break;
   }
 }
 
@@ -5017,17 +4998,10 @@ static void  Free_ChainContextPos( HB_GPOS_SubTable* st )
 
   switch ( ccp->PosFormat )
   {
-  case 1:
-    Free_ChainContextPos1( &ccp->ccpf.ccpf1 );
-    break;
-
-  case 2:
-    Free_ChainContextPos2( &ccp->ccpf.ccpf2 );
-    break;
-
-  case 3:
-    Free_ChainContextPos3( &ccp->ccpf.ccpf3 );
-    break;
+  case 1:  Free_ChainContextPos1( &ccp->ccpf.ccpf1 ); break;
+  case 2:  Free_ChainContextPos2( &ccp->ccpf.ccpf2 ); break;
+  case 3:  Free_ChainContextPos3( &ccp->ccpf.ccpf3 ); break;
+  default:						      break;
   }
 }
 
@@ -5795,25 +5769,6 @@ HB_Error  HB_GPOS_Query_Features( HB_GPOSHeader*  gpos,
 }
 
 
-typedef HB_Error  (*Lookup_Pos_Func_Type)  ( GPOS_Instance*    gpi,
-					     HB_GPOS_SubTable* st,
-					     HB_Buffer        buffer,
-					     HB_UShort         flags,
-					     HB_UShort         context_length,
-					     int               nesting_level );
-static const Lookup_Pos_Func_Type Lookup_Pos_Call_Table[] = {
-  Lookup_DefaultPos,
-  Lookup_SinglePos,		/* HB_GPOS_LOOKUP_SINGLE     1 */
-  Lookup_PairPos,		/* HB_GPOS_LOOKUP_PAIR       2 */
-  Lookup_CursivePos,		/* HB_GPOS_LOOKUP_CURSIVE    3 */
-  Lookup_MarkBasePos,		/* HB_GPOS_LOOKUP_MARKBASE   4 */
-  Lookup_MarkLigPos,		/* HB_GPOS_LOOKUP_MARKLIG    5 */
-  Lookup_MarkMarkPos,		/* HB_GPOS_LOOKUP_MARKMARK   6 */
-  Lookup_ContextPos,		/* HB_GPOS_LOOKUP_CONTEXT    7 */
-  Lookup_ChainContextPos,	/* HB_GPOS_LOOKUP_CHAIN      8 */
-  Lookup_DefaultPos,		/* HB_GPOS_LOOKUP_EXTENSION  9 */
-};
-
 /* Do an individual subtable lookup.  Returns HB_Err_Ok if positioning
    has been done, or HB_Err_Not_Covered if not.                        */
 static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
@@ -5827,13 +5782,12 @@ static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
   HB_GPOSHeader*       gpos = gpi->gpos;
   HB_Lookup*           lo;
   int		       lookup_type;
-  Lookup_Pos_Func_Type Func;
 
 
   nesting_level++;
 
   if ( nesting_level > HB_MAX_NESTING_LEVEL )
-    return ERR(HB_Err_Not_Covered);
+    return ERR(HB_Err_Not_Covered); /* ERR() call intended */
 
   lookup_count = gpos->LookupList.LookupCount;
   if (lookup_index >= lookup_count)
@@ -5842,21 +5796,36 @@ static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
   lo    = &gpos->LookupList.Lookup[lookup_index];
   flags = lo->LookupFlag;
   lookup_type = lo->LookupType;
-  if (lookup_type >= ARRAY_LEN (Lookup_Pos_Call_Table))
-    lookup_type = 0;
-  Func = Lookup_Pos_Call_Table[lookup_type];
 
   for ( i = 0; i < lo->SubTableCount; i++ )
   {
-    error = Func ( gpi,
-		   &lo->SubTable[i].st.gpos,
-		   buffer,
-		   flags, context_length,
-		   nesting_level );
+    HB_GPOS_SubTable *st = &lo->SubTable[i].st.gpos;
+
+    switch (lookup_type) {
+      case HB_GPOS_LOOKUP_SINGLE:
+        error = Lookup_SinglePos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_PAIR:
+	error = Lookup_PairPos		( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_CURSIVE:
+	error = Lookup_CursivePos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_MARKBASE:
+	error = Lookup_MarkBasePos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_MARKLIG:
+	error = Lookup_MarkLigPos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_MARKMARK:
+	error = Lookup_MarkMarkPos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_CONTEXT:
+	error = Lookup_ContextPos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+      case HB_GPOS_LOOKUP_CHAIN:
+	error = Lookup_ChainContextPos	( gpi, st, buffer, flags, context_length, nesting_level ); break;
+    /*case HB_GPOS_LOOKUP_EXTENSION:
+	error = Lookup_ExtensionPos	( gpi, st, buffer, flags, context_length, nesting_level ); break;*/
+      default:
+	error = HB_Err_Not_Covered;
+    }
 
     /* Check whether we have a successful positioning or an error other
        than HB_Err_Not_Covered                                         */
-
     if ( error != HB_Err_Not_Covered )
       return error;
   }
@@ -5865,76 +5834,43 @@ static HB_Error  GPOS_Do_Glyph_Lookup( GPOS_Instance*    gpi,
 }
 
 
-static HB_Error  Load_DefaultPos( HB_GPOS_SubTable* st,
-				  HB_Stream         stream )
+HB_INTERNAL HB_Error
+_HB_GPOS_Load_SubTable( HB_GPOS_SubTable* st,
+			HB_Stream         stream,
+			HB_UShort         lookup_type )
 {
-  HB_UNUSED(st);
-  HB_UNUSED(stream);
-  return ERR(HB_Err_Invalid_SubTable_Format);
-}
-
-typedef HB_Error  (*Load_Pos_Func_Type)( HB_GPOS_SubTable* st,
-					 HB_Stream         stream );
-static const Load_Pos_Func_Type Load_Pos_Call_Table[] = {
-  Load_DefaultPos,
-  Load_SinglePos,		/* HB_GPOS_LOOKUP_SINGLE     1 */
-  Load_PairPos,			/* HB_GPOS_LOOKUP_PAIR       2 */
-  Load_CursivePos,		/* HB_GPOS_LOOKUP_CURSIVE    3 */
-  Load_MarkBasePos,		/* HB_GPOS_LOOKUP_MARKBASE   4 */
-  Load_MarkLigPos,		/* HB_GPOS_LOOKUP_MARKLIG    5 */
-  Load_MarkMarkPos,		/* HB_GPOS_LOOKUP_MARKMARK   6 */
-  Load_ContextPos,		/* HB_GPOS_LOOKUP_CONTEXT    7 */
-  Load_ChainContextPos,		/* HB_GPOS_LOOKUP_CHAIN      8 */
-  Load_DefaultPos,		/* HB_GPOS_LOOKUP_EXTENSION  9 */
-};
-
-HB_Error  _HB_GPOS_Load_SubTable( HB_GPOS_SubTable*  st,
-				  HB_Stream     stream,
-				  HB_UShort     lookup_type )
-{
-  Load_Pos_Func_Type Func;
-
-  if (lookup_type >= ARRAY_LEN (Load_Pos_Call_Table))
-    lookup_type = 0;
-
-  Func = Load_Pos_Call_Table[lookup_type];
-
-  return Func ( st, stream );
+  switch ( lookup_type ) {
+    case HB_GPOS_LOOKUP_SINGLE:		return Load_SinglePos		( st, stream );
+    case HB_GPOS_LOOKUP_PAIR:		return Load_PairPos		( st, stream );
+    case HB_GPOS_LOOKUP_CURSIVE:	return Load_CursivePos		( st, stream );
+    case HB_GPOS_LOOKUP_MARKBASE:	return Load_MarkBasePos		( st, stream );
+    case HB_GPOS_LOOKUP_MARKLIG:	return Load_MarkLigPos		( st, stream );
+    case HB_GPOS_LOOKUP_MARKMARK:	return Load_MarkMarkPos		( st, stream );
+    case HB_GPOS_LOOKUP_CONTEXT:	return Load_ContextPos		( st, stream );
+    case HB_GPOS_LOOKUP_CHAIN:		return Load_ChainContextPos	( st, stream );
+  /*case HB_GPOS_LOOKUP_EXTENSION:	return Load_ExtensionPos	( st, stream );*/
+    default:				return ERR(HB_Err_Invalid_SubTable_Format);
+  }
 }
 
 
-static void  Free_DefaultPos( HB_GPOS_SubTable* st )
+HB_INTERNAL void
+_HB_GPOS_Free_SubTable( HB_GPOS_SubTable* st,
+			HB_UShort         lookup_type )
 {
-  HB_UNUSED(st);
+  switch ( lookup_type ) {
+    case HB_GPOS_LOOKUP_SINGLE:		Free_SinglePos		( st ); return;
+    case HB_GPOS_LOOKUP_PAIR:		Free_PairPos		( st ); return;
+    case HB_GPOS_LOOKUP_CURSIVE:	Free_CursivePos		( st ); return;
+    case HB_GPOS_LOOKUP_MARKBASE:	Free_MarkBasePos	( st ); return;
+    case HB_GPOS_LOOKUP_MARKLIG:	Free_MarkLigPos		( st ); return;
+    case HB_GPOS_LOOKUP_MARKMARK:	Free_MarkMarkPos	( st ); return;
+    case HB_GPOS_LOOKUP_CONTEXT:	Free_ContextPos		( st ); return;
+    case HB_GPOS_LOOKUP_CHAIN:		Free_ChainContextPos	( st ); return;
+  /*case HB_GPOS_LOOKUP_EXTENSION:	Free_ExtensionPos	( st ); return;*/
+    default:									return;
+  }
 }
-
-typedef void (*Free_Pos_Func_Type)( HB_GPOS_SubTable* st );
-static const Free_Pos_Func_Type Free_Pos_Call_Table[] = {
-  Free_DefaultPos,
-  Free_SinglePos,		/* HB_GPOS_LOOKUP_SINGLE     1 */
-  Free_PairPos,			/* HB_GPOS_LOOKUP_PAIR       2 */
-  Free_CursivePos,		/* HB_GPOS_LOOKUP_CURSIVE    3 */
-  Free_MarkBasePos,		/* HB_GPOS_LOOKUP_MARKBASE   4 */
-  Free_MarkLigPos,		/* HB_GPOS_LOOKUP_MARKLIG    5 */
-  Free_MarkMarkPos,		/* HB_GPOS_LOOKUP_MARKMARK   6 */
-  Free_ContextPos,		/* HB_GPOS_LOOKUP_CONTEXT    7 */
-  Free_ChainContextPos,		/* HB_GPOS_LOOKUP_CHAIN      8 */
-  Free_DefaultPos,		/* HB_GPOS_LOOKUP_EXTENSION  9 */
-};
-
-void  _HB_GPOS_Free_SubTable( HB_GPOS_SubTable*  st,
-			      HB_UShort     lookup_type )
-{
-  Free_Pos_Func_Type Func;
-
-  if (lookup_type >= ARRAY_LEN (Free_Pos_Call_Table))
-    lookup_type = 0;
-
-  Func = Free_Pos_Call_Table[lookup_type];
-
-  Func ( st );
-}
-
 
 
 /* apply one lookup to the input string object */
@@ -5948,19 +5884,18 @@ static HB_Error  GPOS_Do_String_Lookup( GPOS_Instance*    gpi,
 
   HB_UInt*  properties = gpos->LookupList.Properties;
 
-  int       nesting_level = 0;
+  const int       nesting_level = 0;
+  /* 0xFFFF indicates that we don't have a context length yet */
+  const HB_UShort context_length = 0xFFFF;
 
 
   gpi->last  = 0xFFFF;     /* no last valid glyph for cursive pos. */
 
   buffer->in_pos = 0;
-
   while ( buffer->in_pos < buffer->in_length )
   {
     if ( ~IN_PROPERTIES( buffer->in_pos ) & properties[lookup_index] )
     {
-      /* 0xFFFF indicates that we don't have a context length yet. */
-
       /* Note that the connection between mark and base glyphs hold
 	 exactly one (string) lookup.  For example, it would be possible
 	 that in the first lookup, mark glyph X is attached to base
@@ -5968,8 +5903,7 @@ static HB_Error  GPOS_Do_String_Lookup( GPOS_Instance*    gpi,
 	 It is up to the font designer to provide meaningful lookups and
 	 lookup order.                                                   */
 
-      error = GPOS_Do_Glyph_Lookup( gpi, lookup_index, buffer,
-				    0xFFFF, nesting_level );
+      error = GPOS_Do_Glyph_Lookup( gpi, lookup_index, buffer, context_length, nesting_level );
       if ( error && error != HB_Err_Not_Covered )
 	return error;
     }
@@ -6103,12 +6037,13 @@ HB_Error  HB_GPOS_Apply_String( HB_Font            font,
 {
   HB_Error       error, retError = HB_Err_Not_Covered;
   GPOS_Instance  gpi;
-  HB_UShort      i, j, feature_index, lookup_count;
-  HB_Feature    feature;
+  int            i, j, lookup_count, num_features;
 
-  if ( !font || !gpos ||
-       !buffer || buffer->in_length == 0 || buffer->in_pos >= buffer->in_length )
+  if ( !font || !gpos || !buffer )
     return ERR(HB_Err_Invalid_Argument);
+
+  if ( buffer->in_length == 0 )
+    return HB_Err_Not_Covered;
 
   gpi.font       = font;
   gpi.gpos       = gpos;
@@ -6117,12 +6052,19 @@ HB_Error  HB_GPOS_Apply_String( HB_Font            font,
   gpi.dvi        = dvi;
 
   lookup_count = gpos->LookupList.LookupCount;
+  num_features = gpos->FeatureList.ApplyCount;
 
-  for ( i = 0; i < gpos->FeatureList.ApplyCount; i++ )
+  if ( num_features )
+    {
+      error = _hb_buffer_clear_positions( buffer );
+      if ( error )
+	return error;
+    }
+
+  for ( i = 0; i < num_features; i++ )
   {
-    /* index of i'th feature */
-    feature_index = gpos->FeatureList.ApplyOrder[i];
-    feature = gpos->FeatureList.FeatureRecord[feature_index].Feature;
+    HB_UShort  feature_index = gpos->FeatureList.ApplyOrder[i];
+    HB_Feature feature = gpos->FeatureList.FeatureRecord[feature_index].Feature;
 
     for ( j = 0; j < feature.LookupListCount; j++ )
     {
@@ -6143,9 +6085,12 @@ HB_Error  HB_GPOS_Apply_String( HB_Font            font,
     }
   }
 
+  if ( num_features )
+    {
   error = Position_CursiveChain ( buffer );
   if ( error )
     return error;
+    }
 
   return retError;
 }
