@@ -712,9 +712,8 @@ static HB_Error  Get_Anchor( GPOS_Instance*   gpi,
       error = gpi->font->klass->getPointInOutline(gpi->font, glyph_index, gpi->load_flags, ap, x_value, y_value, &n_points);
       if (error)
           return error;
-      /* if outline.n_points is set to zero, we use the
-	 design coordinate value pair.  This can happen e.g. for
-	 sbit glyphs                                               */
+      /* if n_points is set to zero, we use the design coordinate value pair.
+       * This can happen e.g. for sbit glyphs. */
       if (!n_points)
           goto no_contour_point;
     }

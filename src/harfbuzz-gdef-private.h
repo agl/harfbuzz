@@ -102,7 +102,7 @@ _HB_GDEF_Check_Property( HB_GDEFHeader* gdef,
 
 HB_INTERNAL HB_Error
 _HB_GDEF_LoadMarkAttachClassDef_From_LookupFlags( HB_GDEFHeader* gdef,
-						  HB_Stream      stream,
+						  HB_Stream      input,
 						  HB_Lookup*     lo,
 						  HB_UShort      num_lookups );
 
