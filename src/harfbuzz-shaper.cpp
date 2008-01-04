@@ -736,7 +736,7 @@ static const hb_uint8 sentenceBreakTable[HB_Sentence_Close + 1][HB_Sentence_Clos
 };
 
 void HB_GetSentenceBoundaries(const HB_UChar16 *string, hb_uint32 stringLength,
-                              const HB_ScriptItem */*items*/, hb_uint32 /*numItems*/,
+                              const HB_ScriptItem * /*items*/, hb_uint32 /*numItems*/,
                               HB_CharAttributes *attributes)
 {
     if (stringLength == 0)
