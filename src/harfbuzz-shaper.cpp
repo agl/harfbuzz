@@ -153,6 +153,7 @@ static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttribute
         HB_GraphemeClass ngrapheme;
         HB_LineBreakClass ncls;
         HB_GetGraphemeAndLineBreakClass(code, &ngrapheme, &ncls);
+        charAttributes[i].charStop = graphemeTable[ngrapheme][grapheme];
         // handle surrogates
         if (ncls == HB_LineBreak_SG) {
             if (HB_IsHighSurrogate(uc[i]) && i < len - 1 && HB_IsLowSurrogate(uc[i+1])) {
@@ -169,8 +170,6 @@ static void calcLineBreaks(const HB_UChar16 *uc, hb_uint32 len, HB_CharAttribute
         // set white space and char stop flag
         if (ncls >= HB_LineBreak_SP)
             charAttributes[i].whiteSpace = true;
-
-        charAttributes[i].charStop = graphemeTable[ngrapheme][grapheme];
 
         HB_LineBreakType lineBreakType = HB_NoBreak;
         if (cls >= HB_LineBreak_LF) {
