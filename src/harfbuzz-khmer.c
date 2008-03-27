@@ -582,6 +582,7 @@ static HB_Bool khmer_shape_syllable(HB_Bool openType, HB_ShaperItem *item)
 #endif
     {
 	KHDEBUG("Not using openType");
+        HB_HeuristicPosition(item);
     }
 
     item->attributes[0].clusterStart = TRUE;

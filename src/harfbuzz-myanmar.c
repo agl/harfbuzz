@@ -454,6 +454,7 @@ static HB_Bool myanmar_shape_syllable(HB_Bool openType, HB_ShaperItem *item, HB_
 #endif
     {
 	MMDEBUG("Not using openType");
+        HB_HeuristicPosition(item);
     }
 
     item->attributes[0].clusterStart = TRUE;

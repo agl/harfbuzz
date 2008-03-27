@@ -1666,6 +1666,8 @@ static bool indic_shape_syllable(HB_Bool openType, HB_ShaperItem *item, bool inv
             item->num_glyphs = j;
         }
 
+    } else {
+        HB_HeuristicPosition(item);
     }
 #endif // NO_OPENTYPE
     item->attributes[0].clusterStart = true;
