@@ -1200,11 +1200,13 @@ HB_Bool HB_OpenTypePosition(HB_ShaperItem *item, int availableGlyphs, HB_Bool do
     }
     item->num_glyphs = face->buffer->in_length;
 
-    if (doLogClusters) {
+    if (doLogClusters && face->glyphs_substituted) {
         // we can't do this for indic, as we pass the stuf in syllables and it's easier to do it in the shaper.
         unsigned short *logClusters = item->log_clusters;
         int clusterStart = 0;
         int oldCi = 0;
+        // #### the reconstruction of the logclusters currently does not work if the original string
+        // contains surrogate pairs
         for (unsigned int i = 0; i < face->buffer->in_length; ++i) {
             int ci = face->buffer->in_string[i].cluster;
             //         DEBUG("   ci[%d] = %d mark=%d, cmb=%d, cs=%d",
