@@ -583,7 +583,8 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
     return true;
 }
 
-static HB_AttributeFunction thai_attributes = 0;
+//static HB_AttributeFunction thai_attributes = 0;
+#define thai_attributes 0
 
 const HB_ScriptEngine HB_ScriptEngines[] = {
     // Common
