@@ -203,7 +203,7 @@ static int myanmar_nextSyllableBoundary(const HB_UChar16 *s, int start, int end,
         MymrCharClass charClass = getMyanmarCharClass(*uc);
         state = mymrStateTable[state][charClass & Mymr_CF_CLASS_MASK];
         if (pos == start)
-            *invalid = charClass & Mymr_CF_DOTTED_CIRCLE;
+            *invalid = (HB_Bool)(charClass & Mymr_CF_DOTTED_CIRCLE);
 
         MMDEBUG("state[%d]=%d class=%8x (uc=%4x)", pos - start, state, charClass, *uc);
 
