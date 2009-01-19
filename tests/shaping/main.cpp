@@ -121,14 +121,14 @@ HB_Error hb_getPointInOutline(HB_Font font, HB_Glyph glyph, int flags, hb_uint32
         return error;
 
     if (face->glyph->format != ft_glyph_format_outline)
-        return (HB_Error)HB_Err_Invalid_GPOS_SubTable;
+        return (HB_Error)HB_Err_Invalid_SubTable;
 
     *nPoints = face->glyph->outline.n_points;
     if (!(*nPoints))
         return HB_Err_Ok;
 
     if (point > *nPoints)
-        return (HB_Error)HB_Err_Invalid_GPOS_SubTable;
+        return (HB_Error)HB_Err_Invalid_SubTable;
 
     *xpos = face->glyph->outline.points[point].x;
     *ypos = face->glyph->outline.points[point].y;
