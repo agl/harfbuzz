@@ -55,3 +55,23 @@ HB_UChar16 HB_GetMirroredChar(HB_UChar16 ch)
     return QChar::mirroredChar(ch);
 }
 
+HB_WordClass HB_GetWordClass(HB_UChar32 ch)
+{
+    const QUnicodeTables::Properties *prop = QUnicodeTables::properties(ch);
+    return (HB_WordClass) prop->wordBreak;
+}
+
+
+HB_SentenceClass HB_GetSentenceClass(HB_UChar32 ch)
+{
+    const QUnicodeTables::Properties *prop = QUnicodeTables::properties(ch);
+    return (HB_SentenceClass) prop->sentenceBreak;
+}
+
+void HB_GetGraphemeAndLineBreakClass(HB_UChar32 ch, HB_GraphemeClass *grapheme, HB_LineBreakClass *lineBreak)
+{
+    const QUnicodeTables::Properties *prop = QUnicodeTables::properties(ch);
+    *grapheme = (HB_GraphemeClass) prop->graphemeBreak;
+    *lineBreak = (HB_LineBreakClass) prop->line_break_class;
+}
+
