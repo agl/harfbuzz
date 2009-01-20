@@ -31,5 +31,6 @@ extern "C" {
 #include "harfbuzz-arabic.c"
 #include "harfbuzz-hangul.c"
 #include "harfbuzz-myanmar.c"
+#include "harfbuzz-thai.c"
 }
 

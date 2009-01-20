@@ -24,6 +24,8 @@
 
 #include <harfbuzz-external.h>
 #include <Qt/private/qunicodetables_p.h>
+#include <QLibrary>
+#include <QTextCodec>
 
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch)
 {
@@ -73,5 +75,25 @@ void HB_GetGraphemeAndLineBreakClass(HB_UChar32 ch, HB_GraphemeClass *grapheme, 
     const QUnicodeTables::Properties *prop = QUnicodeTables::properties(ch);
     *grapheme = (HB_GraphemeClass) prop->graphemeBreak;
     *lineBreak = (HB_LineBreakClass) prop->line_break_class;
+}
+
+void *HB_Library_Resolve(const char *library, const char *symbol)
+{
+    return QLibrary::resolve(library, symbol);
+}
+
+void *HB_TextCodecForMib(int mib)
+{
+    return QTextCodec::codecForMib(mib);
+}
+
+char *HB_TextCodec_ConvertFromUnicode(void *codec, const HB_UChar16 *unicode, hb_uint32 length, hb_uint32 *outputLength)
+{
+    QByteArray data = reinterpret_cast<QTextCodec *>(codec)->fromUnicode((const QChar *)unicode, length);
+    // ### suboptimal
+    char *output = (char *)malloc(data.length() + 1);
+    memcpy(output, data.constData(), data.length() + 1);
+    *outputLength = data.length();
+    return output;
 }
 

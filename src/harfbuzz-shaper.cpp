@@ -583,9 +583,6 @@ HB_Bool HB_BasicShape(HB_ShaperItem *shaper_item)
     return true;
 }
 
-//static HB_AttributeFunction thai_attributes = 0;
-#define thai_attributes 0
-
 const HB_ScriptEngine HB_ScriptEngines[] = {
     // Common
     { HB_BasicShape, 0},
@@ -624,7 +621,7 @@ const HB_ScriptEngine HB_ScriptEngines[] = {
     // Sinhala
     { HB_IndicShape, HB_IndicAttributes },
     // Thai
-    { HB_BasicShape, thai_attributes },
+    { HB_BasicShape, HB_ThaiAttributes },
     // Lao
     { HB_BasicShape, 0 },
     // Tibetan

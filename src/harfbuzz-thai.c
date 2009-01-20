@@ -22,64 +22,66 @@
  * PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  */
 
-#if 0
-#include <qtextcodec.h>
-#include <qlibrary.h>
+#include "harfbuzz-shaper.h"
+#include "harfbuzz-shaper-private.h"
+#include "harfbuzz-external.h"
 
+#include <assert.h>
 
-static void thaiWordBreaks(const QChar *string, const int len, QCharAttributes *attributes)
+static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttributes *attributes)
 {
-#ifdef QT_NO_TEXTCODEC
-    Q_UNUSED(string);
-    Q_UNUSED(len);
-    Q_UNUSED(attributes);
-#else
     typedef int (*th_brk_def)(const char*, int[], int);
-    static QTextCodec *thaiCodec = QTextCodec::codecForMib(2259);
+    static void *thaiCodec = 0;
     static th_brk_def th_brk = 0;
+    hb_uint32 cstrLength = 0;
+    char *cstr = 0;
+    int brp[128];
+    int *break_positions = brp;
+    hb_uint32 numbreaks;
+    hb_uint32 i;
 
-#ifndef QT_NO_LIBRARY
+    if (!thaiCodec)
+        thaiCodec = HB_TextCodecForMib(2259);
+
     /* load libthai dynamically */
     if (!th_brk && thaiCodec) {
-        th_brk = (th_brk_def)QLibrary::resolve(QLatin1String("thai"), "th_brk");
+        th_brk = (th_brk_def)HB_Library_Resolve("thai", "th_brk");
         if (!th_brk)
             thaiCodec = 0;
     }
-#endif
 
     if (!th_brk)
         return;
 
-    QByteArray cstr = thaiCodec->fromUnicode(QString(string, len));
+    cstr = HB_TextCodec_ConvertFromUnicode(thaiCodec, string, len, &cstrLength);
+    if (!cstr)
+        return;
 
-    int brp[128];
-    int *break_positions = brp;
-    int numbreaks = th_brk(cstr.constData(), break_positions, 128);
+    break_positions = brp;
+    numbreaks = th_brk(cstr, break_positions, 128);
     if (numbreaks > 128) {
-        break_positions = new int[numbreaks];
-        numbreaks = th_brk(cstr.data(),break_positions, numbreaks);
+        break_positions = (int *)malloc(numbreaks * sizeof(int));
+        numbreaks = th_brk(cstr, break_positions, numbreaks);
     }
 
-    for (int i = 0; i < len - 1; ++i)
-        attributes[i].lineBreakType = QCharAttributes::NoBreak;
+    for (i = 0; i < len; ++i)
+        attributes[i].lineBreakType = HB_NoBreak;
 
-    for (int i = 0; i < numbreaks; ++i) {
+    for (i = 0; i < numbreaks; ++i) {
         if (break_positions[i] > 0)
-            attributes[break_positions[i]-1].lineBreakType = QCharAttributes::Break;
+            attributes[break_positions[i]-1].lineBreakType = HB_Break;
     }
 
     if (break_positions != brp)
-        delete [] break_positions;
-#endif // QT_NO_TEXTCODEC
+        free(break_positions);
+
+    free(cstr);
 }
 
 
-static void thai_attributes( int script, const QString &text, int from, int len, QCharAttributes *attributes )
+void HB_ThaiAttributes(HB_Script script, const HB_UChar16 *text, hb_uint32 from, hb_uint32 len, HB_CharAttributes *attributes)
 {
-    Q_UNUSED(script);
-    Q_ASSERT(script == QUnicodeTables::Thai);
-    thaiWordBreaks(text.unicode() + from, len, attributes);
+    assert(script == HB_Script_Thai);
+    thaiWordBreaks(text + from, len, attributes);
 }
 
-
-#endif

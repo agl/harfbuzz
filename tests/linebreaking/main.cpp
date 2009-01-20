@@ -32,13 +32,13 @@
 
 #include <harfbuzz-shaper.h>
 
-static QVector<HB_CharAttributes> getCharAttributes(const QString &str)
+static QVector<HB_CharAttributes> getCharAttributes(const QString &str, HB_Script script = HB_Script_Common)
 {
     QVector<HB_CharAttributes> attrs(str.length());
     HB_ScriptItem item;
     item.pos = 0;
     item.length = str.length();
-    item.script = HB_Script_Common;
+    item.script = script;
     HB_GetCharAttributes(str.utf16(), str.length(),
                          &item, 1,
                          attrs.data());
@@ -60,6 +60,7 @@ private slots:
     void lineBreaking();
     void charWordStopOnLineSeparator();
     void charStopForSurrogatePairs();
+    void thaiWordBreak();
 };
 
 
@@ -183,6 +184,46 @@ void tst_CharAttributes::charStopForSurrogatePairs()
     QVERIFY(attrs[1].charStop);
     QVERIFY(!attrs[2].charStop);
     QVERIFY(attrs[3].charStop);
+}
+
+void tst_CharAttributes::thaiWordBreak()
+{
+    // สวัสดีครับ นี่เป็นการงทดสอบตัวเอ
+    QTextCodec *codec = QTextCodec::codecForMib(2259);
+    QString txt = codec->toUnicode(QByteArray("\xca\xc7\xd1\xca\xb4\xd5\xa4\xc3\xd1\xba\x20\xb9\xd5\xe8\xe0\xbb\xe7\xb9\xa1\xd2\xc3\xb7\xb4\xca\xcd\xba\xb5\xd1\xc7\xe0\xcd\xa7"));
+
+
+    QCOMPARE(txt.length(), 32);
+    QVector<HB_CharAttributes> attrs = getCharAttributes(txt, HB_Script_Thai);
+    QVERIFY(attrs[0].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[1].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[2].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[3].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[4].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[5].lineBreakType == HB_Break);
+    QVERIFY(attrs[6].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[7].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[8].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[9].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[10].lineBreakType == HB_Break);
+    QVERIFY(attrs[11].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[12].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[13].lineBreakType == HB_Break);
+    QVERIFY(attrs[14].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[15].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[16].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[17].lineBreakType == HB_Break);
+    QVERIFY(attrs[18].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[19].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[20].lineBreakType == HB_Break);
+    QVERIFY(attrs[21].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[22].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[23].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[24].lineBreakType == HB_NoBreak);
+    QVERIFY(attrs[25].lineBreakType == HB_Break);
+    QVERIFY(attrs[26].lineBreakType == HB_NoBreak);
+    for (int i = 27; i < 32; ++i)
+        QVERIFY(attrs[i].lineBreakType == HB_NoBreak);
 }
 
 QTEST_MAIN(tst_CharAttributes)

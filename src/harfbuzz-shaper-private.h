@@ -116,6 +116,8 @@ extern void HB_KhmerAttributes(HB_Script script, const HB_UChar16 *string, hb_ui
 
 extern void HB_IndicAttributes(HB_Script script, const HB_UChar16 *string, hb_uint32 from, hb_uint32 len, HB_CharAttributes *attributes);
 
+extern void HB_ThaiAttributes(HB_Script script, const HB_UChar16 *string, hb_uint32 from, hb_uint32 len, HB_CharAttributes *attributes);
+
 typedef struct {
     hb_uint32 tag;
     hb_uint32 property;
