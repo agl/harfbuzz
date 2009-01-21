@@ -33,7 +33,6 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
     typedef int (*th_brk_def)(const char*, int[], int);
     static void *thaiCodec = 0;
     static th_brk_def th_brk = 0;
-    hb_uint32 cstrLength = 0;
     char *cstr = 0;
     int brp[128];
     int *break_positions = brp;
@@ -53,7 +52,7 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
     if (!th_brk)
         return;
 
-    cstr = HB_TextCodec_ConvertFromUnicode(thaiCodec, string, len, &cstrLength);
+    cstr = HB_TextCodec_ConvertFromUnicode(thaiCodec, string, len, 0);
     if (!cstr)
         return;
 
@@ -75,7 +74,7 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
     if (break_positions != brp)
         free(break_positions);
 
-    free(cstr);
+    HB_TextCodec_FreeResult(cstr);
 }
 
 

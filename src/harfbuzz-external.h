@@ -150,6 +150,7 @@ void *HB_Library_Resolve(const char *library, const char *symbol);
 
 void *HB_TextCodecForMib(int mib);
 char *HB_TextCodec_ConvertFromUnicode(void *codec, const HB_UChar16 *unicode, hb_uint32 length, hb_uint32 *outputLength);
+void HB_TextCodec_FreeResult(char *);
 
 HB_END_HEADER
 

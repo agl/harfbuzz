@@ -93,7 +93,13 @@ char *HB_TextCodec_ConvertFromUnicode(void *codec, const HB_UChar16 *unicode, hb
     // ### suboptimal
     char *output = (char *)malloc(data.length() + 1);
     memcpy(output, data.constData(), data.length() + 1);
-    *outputLength = data.length();
+    if (outputLength)
+        *outputLength = data.length();
     return output;
+}
+
+void HB_TextCodec_FreeResult(char *string)
+{
+    free(string);
 }
 
