@@ -82,6 +82,7 @@ static void thaiWordBreaks(const HB_UChar16 *string, hb_uint32 len, HB_CharAttri
 void HB_ThaiAttributes(HB_Script script, const HB_UChar16 *text, hb_uint32 from, hb_uint32 len, HB_CharAttributes *attributes)
 {
     assert(script == HB_Script_Thai);
+    attributes += from;
     thaiWordBreaks(text + from, len, attributes);
 }
 
