@@ -252,6 +252,7 @@ void HB_TibetanAttributes(HB_Script script, const HB_UChar16 *text, hb_uint32 fr
     int end = from + len;
     const HB_UChar16 *uc = text + from;
     hb_uint32 i = 0;
+    HB_UNUSED(script);
     attributes += from;
     while (i < len) {
         HB_Bool invalid;
