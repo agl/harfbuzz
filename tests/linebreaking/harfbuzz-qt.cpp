@@ -27,6 +27,8 @@
 #include <QLibrary>
 #include <QTextCodec>
 
+extern "C" {
+
 HB_LineBreakClass HB_GetLineBreakClass(HB_UChar32 ch)
 {
 #if QT_VERSION >= 0x040300
@@ -103,3 +105,4 @@ void HB_TextCodec_FreeResult(char *string)
     free(string);
 }
 
+}
