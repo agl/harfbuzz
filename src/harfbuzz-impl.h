@@ -28,6 +28,8 @@
 
 #include "harfbuzz-global.h"
 
+#include <stdlib.h>
+
 HB_BEGIN_HEADER
 
 #ifndef HB_INTERNAL
@@ -107,12 +109,12 @@ HB_BEGIN_HEADER
 
 
 HB_INTERNAL HB_Pointer
-_hb_alloc( HB_UInt   size,
+_hb_alloc( size_t    size,
 	   HB_Error *perror_ );
 
 HB_INTERNAL HB_Pointer
 _hb_realloc( HB_Pointer block,
-	     HB_UInt    new_size,
+	     size_t     new_size,
 	     HB_Error  *perror_ );
 
 HB_INTERNAL void
