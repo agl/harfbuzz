@@ -242,7 +242,9 @@ typedef struct HB_Font_ {
     void *userData;
 } HB_FontRec;
 
-typedef struct {
+typedef struct HB_ShaperItem_ HB_ShaperItem;
+
+struct HB_ShaperItem_ {
     const HB_UChar16 *string;
     hb_uint32 stringLength;
     HB_ScriptItem item;
@@ -262,7 +264,7 @@ typedef struct {
 
     /* internal */
     HB_Bool kerning_applied; /* out: kerning applied by shaper */
-} HB_ShaperItem;
+};
 
 HB_Bool HB_ShapeItem(HB_ShaperItem *item);
 
